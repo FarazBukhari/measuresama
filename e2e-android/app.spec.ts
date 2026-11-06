@@ -51,9 +51,8 @@ test.describe('unit setting', () => {
     await cm.check()
     await expect(cm).toBeChecked()
     expect(await app.evaluate(() => localStorage.getItem('measuresama:unit'))).toBe('"cm"')
-    // Android WebView commits localStorage to disk about 5 s after a write. The next test
-    // force-stops the app, which would drop the write, so give the commit time to land.
-    await app.waitForTimeout(8_000)
+    // No waiting on purpose: the next test force-stops the app within a second or two. The
+    // WebView alone needs about 5 s to commit localStorage; the native store must survive this.
     expect(errors).toEqual([])
   })
 
@@ -62,8 +61,13 @@ test.describe('unit setting', () => {
     await go(app, '/settings')
     await expect(app.getByLabel('Centimetres (cm)', { exact: true })).toBeChecked()
     await expect(app.getByLabel('Inches (in)', { exact: true })).not.toBeChecked()
-    // Leave the device as we found it: no saved unit.
-    await app.evaluate(() => localStorage.removeItem('measuresama:unit'))
+    // Leave the device as we found it: no saved unit, in the WebView or the native store.
+    await app.evaluate(async () => {
+      type Prefs = { remove(options: { key: string }): Promise<void> }
+      const { Capacitor } = window as unknown as { Capacitor: { Plugins: { Preferences: Prefs } } }
+      await Capacitor.Plugins.Preferences.remove({ key: 'measuresama:unit' })
+      localStorage.removeItem('measuresama:unit')
+    })
     expect(errors).toEqual([])
   })
 })

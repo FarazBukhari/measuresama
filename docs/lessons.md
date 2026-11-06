@@ -32,9 +32,16 @@ Read before planning. Each item cost real time once.
   the first store release: a new ID is a different app with its own listing.
 - **WebView `localStorage` reaches disk about 5 s after a write.** If the process is killed
   sooner (`am force-stop`, or a user swiping the app away right after saving), the write is
-  lost. Device tests that relaunch must wait first. Settings and history currently live in
-  `localStorage` (`src/lib/storage.ts`); moving history to `@capacitor/preferences` or a
-  Filesystem JSON file closes the gap for users.
+  lost. So in the app, `src/lib/storage.ts` also writes every `measuresama:` key to
+  `@capacitor/preferences` (on disk at once), and `hydrateStorage()` in `src/main.tsx`
+  restores them before `App` and the stores are imported (stores read storage when their
+  module loads, so never import them statically from `main.tsx`). Always go through
+  `storage`; a direct `localStorage` write is not mirrored and is undone at the next launch.
+  The relaunch device test deliberately does not wait. If history grows past a few hundred
+  KB, move it to a Filesystem JSON file.
+- **Full web e2e: use the production build** (`npm run build`, then `PORT=<port> npx playwright
+  test`, which serves `vite preview` like CI). With `E2E_DEV=1` and a fresh cache, the first
+  full parallel run can time out while Vite optimizes deps behind the dynamic `import('./App')`.
 - After adding a Capacitor plugin: `npx cap sync` (Android **and** iOS), commit
   `android/app/capacitor.build.gradle`, `android/capacitor.settings.gradle` and
   `ios/App/CapApp-SPM/Package.swift`.

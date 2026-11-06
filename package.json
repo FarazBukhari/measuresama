@@ -25,6 +25,7 @@
     "@capacitor/core": "^8.5.3",
     "@capacitor/filesystem": "^8.1.5",
     "@capacitor/ios": "^8.5.3",
+    "@capacitor/preferences": "^8.0.1",
     "@capacitor/share": "^8.0.3",
     "@fontsource-variable/jetbrains-mono": "^5.3.0",
     "@fontsource-variable/plus-jakarta-sans": "^5.3.0",
