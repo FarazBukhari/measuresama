@@ -51,6 +51,9 @@ test.describe('unit setting', () => {
     await cm.check()
     await expect(cm).toBeChecked()
     expect(await app.evaluate(() => localStorage.getItem('measuresama:unit'))).toBe('"cm"')
+    // Android WebView commits localStorage to disk about 5 s after a write. The next test
+    // force-stops the app, which would drop the write, so give the commit time to land.
+    await app.waitForTimeout(8_000)
     expect(errors).toEqual([])
   })
 

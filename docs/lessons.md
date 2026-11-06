@@ -30,6 +30,11 @@ Read before planning. Each item cost real time once.
 - **App ID is `com.foxysama.measuresama`** (Android `applicationId`/`namespace` and Java package,
   iOS bundle ID, `capacitor.config.ts`, `e2e-android/fixtures.ts`). It must never change after
   the first store release: a new ID is a different app with its own listing.
+- **WebView `localStorage` reaches disk about 5 s after a write.** If the process is killed
+  sooner (`am force-stop`, or a user swiping the app away right after saving), the write is
+  lost. Device tests that relaunch must wait first. Settings and history currently live in
+  `localStorage` (`src/lib/storage.ts`); moving history to `@capacitor/preferences` or a
+  Filesystem JSON file closes the gap for users.
 - After adding a Capacitor plugin: `npx cap sync` (Android **and** iOS), commit
   `android/app/capacitor.build.gradle`, `android/capacitor.settings.gradle` and
   `ios/App/CapApp-SPM/Package.swift`.
