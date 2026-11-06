@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Big round Add point button: white with an indigo ring. -->
+<ripple xmlns:android="http://schemas.android.com/apk/res/android"
+    android:color="#403730A3">
+    <item>
+        <shape android:shape="oval">
+            <solid android:color="#FFFFFF" />
+            <stroke
+                android:width="4dp"
+                android:color="#3730A3" />
+        </shape>
+    </item>
+</ripple>

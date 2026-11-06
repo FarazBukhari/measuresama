@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:requestLegacyExternalStorage="true"
+        android:theme="@style/AppTheme">
+        <activity
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode|navigation|density"
+            android:name=".MainActivity"
+            android:label="@string/title_activity_main"
+            android:theme="@style/AppTheme.NoActionBarLaunch"
+            android:launchMode="singleTask"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- AR measuring screen, opened by the ArMeasure plugin (start). -->
+        <activity
+            android:name=".ar.ArMeasureActivity"
+            android:label="@string/ar_activity_title"
+            android:configChanges="orientation|screenSize|keyboardHidden"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.AppCompat.NoActionBar"
+            android:exported="false" />
+
+        <!-- ARCore is optional: the app installs on every phone and checks for AR at runtime. -->
+        <meta-data android:name="com.google.ar.core" android:value="optional" />
+
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/file_paths" />
+        </provider>
+    </application>
+
+    <!-- Permissions -->
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Camera (asked only when AR measuring starts) -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <!-- Saving files to Documents on Android 9 and older; newer versions need no permission -->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="29" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
+
+    <!-- Cameras are optional: devices without them can still install the app -->
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
+    <!-- AR is optional too: phones without ARCore get the on-screen ruler -->
+    <uses-feature android:name="android.hardware.camera.ar" android:required="false" />
+    <!-- The AR screen is portrait-locked; without this, aapt adds an implied required
+         screen.portrait feature and Play hides the app from landscape-only devices. -->
+    <uses-feature android:name="android.hardware.screen.portrait" android:required="false" />
+</manifest>

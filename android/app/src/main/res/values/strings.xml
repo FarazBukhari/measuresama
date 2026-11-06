@@ -1,0 +1,47 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Measure Sama</string>
+    <string name="title_activity_main">Measure Sama</string>
+    <string name="package_name">com.foxysama.measuresama</string>
+    <string name="custom_url_scheme">com.foxysama.measuresama</string>
+
+    <!-- AR measuring screen -->
+    <string name="ar_activity_title">Measure with the camera</string>
+    <string name="ar_view_description">Camera view. Tap anywhere to add a point where the circle is.</string>
+    <string name="ar_close">Close</string>
+    <string name="ar_add_point">Add point</string>
+    <string name="ar_undo">Undo</string>
+    <string name="ar_clear">Clear</string>
+    <string name="ar_reset_surface">Reset surface</string>
+    <string name="ar_save">Save</string>
+    <string name="ar_saving">Saving…</string>
+
+    <!-- AR hints, shown at the top of the AR screen -->
+    <string name="ar_hint_coaching">Point your phone at the floor or a table and move it slowly.</string>
+    <string name="ar_hint_surface_found">Surface found. Aim the circle at the start point.</string>
+    <string name="ar_hint_aim_end">Now aim the circle at the end point and tap +.</string>
+    <string name="ar_hint_done">Tap Save to keep it, or tap + to move the end point.</string>
+    <string name="ar_hint_too_dark">Too dark. Turn on a light.</string>
+    <string name="ar_hint_too_fast">Moving too fast. Move slowly.</string>
+    <string name="ar_hint_low_texture">Point at something with more texture or pattern.</string>
+    <string name="ar_hint_camera_busy">The camera is busy. Close other camera apps.</string>
+    <string name="ar_hint_getting_ready">Getting ready. Move your phone slowly.</string>
+    <string name="ar_warning_far_metric">Results get less accurate past 5 m.</string>
+    <string name="ar_warning_far_imperial">Results get less accurate past 16 ft.</string>
+
+    <!-- Why AR could not start (returned to the app as a plain-language message) -->
+    <string name="ar_error_not_installed">AR needs Google Play Services for AR. Install it, then try again.</string>
+    <string name="ar_error_apk_too_old">Google Play Services for AR is out of date. Update it, then try again.</string>
+    <string name="ar_error_sdk_too_old">This version of Measure Sama is too old for AR. Update the app, then try again.</string>
+    <string name="ar_error_device_not_compatible">This phone can\'t run AR.</string>
+    <string name="ar_error_camera_unavailable">The camera is busy. Close other camera apps, then try again.</string>
+    <string name="ar_error_camera_permission">Measure Sama needs the camera to measure. You can allow it in Settings.</string>
+    <string name="ar_error_generic">AR couldn\'t start. Please try again.</string>
+
+    <!-- AR availability reasons (checkAvailability) -->
+    <string name="ar_reason_supported">This phone can measure with AR.</string>
+    <string name="ar_reason_needs_install">AR needs Google Play Services for AR. It\'s a free download.</string>
+    <string name="ar_reason_needs_update">Google Play Services for AR needs an update.</string>
+    <string name="ar_reason_unsupported">This phone can\'t run AR.</string>
+    <string name="ar_reason_unknown">We couldn\'t check if this phone can run AR. Check your internet connection and try again.</string>
+</resources>
