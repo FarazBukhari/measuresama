@@ -7,7 +7,7 @@ export const COMING_SOON_MESSAGE = 'This measuring mode is coming soon.'
 /** Browsers can't measure with the camera: every call reports "unsupported". */
 export class ArMeasureWeb extends WebPlugin implements ArMeasurePlugin {
   async checkAvailability(): Promise<ArAvailability> {
-    return { status: 'unsupported', platform: 'web', reason: WEB_UNSUPPORTED_REASON }
+    return { status: 'unsupported', platform: 'web', reason: WEB_UNSUPPORTED_REASON, modes: [] }
   }
 
   async requestInstall(): Promise<{ status: ArAvailabilityStatus }> {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { defaultUnitForLocale, formatArea, formatLength, metresTo } from './units'
+import { defaultUnitForLocale, formatAngle, formatArea, formatLength, formatLitres, formatVolume, metresTo } from './units'
 
 describe('formatLength (shared contract vectors)', () => {
   it.each([
@@ -23,6 +23,7 @@ describe('formatLength edge cases', () => {
       expect(formatLength(-0.5, unit)).toBe('—')
       expect(formatLength(Number.NaN, unit)).toBe('—')
       expect(formatLength(Number.POSITIVE_INFINITY, unit)).toBe('—')
+      expect(formatLength(undefined, unit)).toBe('—')
     }
   })
   it('switches to metres at exactly 1 m', () => {
@@ -52,6 +53,57 @@ describe('formatArea', () => {
     expect(formatArea(0.06, 'in')).toBe('93 sq in')
     expect(formatArea(2.5, 'in')).toBe('26.91 sq ft')
     expect(formatArea(Number.NaN, 'in')).toBe('—')
+  })
+})
+
+describe('shared contract vectors: area, volume, angle', () => {
+  it.each([
+    [0.085, 'cm', '850 cm²'],
+    [2.5, 'cm', '2.50 m²'],
+    [2.5, 'in', '26.91 sq ft'],
+  ] as const)('area %s m² in %s → %s', (m2, unit, expected) => {
+    expect(formatArea(m2, unit)).toBe(expected)
+  })
+  it.each([
+    [0.25, 'cm', '250 L'],
+    [1.5, 'cm', '1.50 m³'],
+    [0.25, 'in', '8.83 ft³'],
+  ] as const)('volume %s m³ in %s → %s', (m3, unit, expected) => {
+    expect(formatVolume(m3, unit)).toBe(expected)
+  })
+  it.each([
+    [90, '90.0°'],
+    [45.04, '45.0°'],
+  ] as const)('angle %s → %s', (deg, expected) => {
+    expect(formatAngle(deg)).toBe(expected)
+  })
+})
+
+describe('formatVolume, formatLitres and formatAngle edge cases', () => {
+  it('switches to m³ at exactly 1 m³', () => {
+    expect(formatVolume(0.9994, 'cm')).toBe('999 L')
+    expect(formatVolume(1, 'cm')).toBe('1.00 m³')
+    expect(formatVolume(0, 'cm')).toBe('0 L')
+    expect(formatVolume(0, 'in')).toBe('0.00 ft³')
+  })
+  it('shows litres', () => {
+    expect(formatLitres(0.25)).toBe('250 L')
+    expect(formatLitres(1.5)).toBe('1500 L')
+    expect(formatLitres(0.0004)).toBe('0 L')
+  })
+  it('shows angles', () => {
+    expect(formatAngle(0)).toBe('0.0°')
+    expect(formatAngle(180)).toBe('180.0°')
+    expect(formatAngle(89.96)).toBe('90.0°')
+  })
+  it('shows a dash for negative, NaN and infinite values', () => {
+    for (const bad of [-1, Number.NaN, Number.POSITIVE_INFINITY]) {
+      expect(formatVolume(bad, 'cm')).toBe('—')
+      expect(formatVolume(bad, 'in')).toBe('—')
+      expect(formatLitres(bad)).toBe('—')
+      expect(formatAngle(bad)).toBe('—')
+      expect(formatArea(bad, 'cm')).toBe('—')
+    }
   })
 })
 

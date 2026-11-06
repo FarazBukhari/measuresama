@@ -1,13 +1,25 @@
-import { Camera, Download, RefreshCw, Ruler } from 'lucide-react'
+import { Camera, Download, Image as ImageIcon, RefreshCw, Ruler } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router'
+import { useNavigate, useParams } from 'react-router'
 import { Alert, Button, Card, Stack } from '../components/ui'
 import { useDocumentTitle } from '../hooks/useDocumentTitle'
 import { UNIT_LABEL } from '../lib/units'
-import { ArMeasure, arErrorCode, checkArAvailability, isArMeasurement, requestArInstall, type ArAvailability, type ArCancelled } from '../plugins/ar-measure'
+import { AR_MODE_COPY, isArPageMode } from '../modes/ar/modeCopy'
+import {
+  ArMeasure,
+  arErrorCode,
+  canStartMode,
+  checkArAvailability,
+  isArMeasurement,
+  requestArInstall,
+  type ArAvailability,
+  type ArCancelled,
+  type ArPluginMode,
+} from '../plugins/ar-measure'
 import { addFromArResult } from '../state/history'
 import { showTipsStore, unitStore } from '../state/settings'
 import { toast } from '../state/toast'
+import NotFoundPage from './NotFoundPage'
 
 export const PERMISSION_MESSAGE = "Measure Sama needs the camera to measure. You can allow it in your phone's Settings."
 
@@ -42,8 +54,16 @@ function errorNotice(e: unknown): Notice {
   }
 }
 
+/** /ar is distance; /ar/:mode is any other AR mode. Photo measure and unknown names have no AR page. */
 export default function ArPage() {
-  useDocumentTitle('Measure a distance')
+  const { mode = 'distance' } = useParams()
+  if (!isArPageMode(mode)) return <NotFoundPage />
+  return <ArModePage key={mode} mode={mode} />
+}
+
+function ArModePage({ mode }: { mode: ArPluginMode }) {
+  const copy = AR_MODE_COPY[mode]
+  useDocumentTitle(copy.title)
   const navigate = useNavigate()
   const unit = unitStore.use()
   const showTips = showTipsStore.use()
@@ -72,10 +92,12 @@ export default function ArPage() {
   }, [attempt])
 
   const start = async () => {
+    // Only modes this build can measure: a rejected plugin call logs a console error.
+    if (!canStartMode(availability, mode)) return
     setNotice(null)
     setBusy(true)
     try {
-      const r = await ArMeasure.start({ mode: 'distance', unit })
+      const r = await ArMeasure.start({ mode, unit })
       if (isArMeasurement(r)) {
         const item = addFromArResult(r)
         toast('Saved', 'success')
@@ -108,12 +130,13 @@ export default function ArPage() {
   }
 
   const status = availability?.status
+  const canStart = canStartMode(availability, mode)
 
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1">
-        <h1 className="text-3xl font-bold tracking-tight">Measure a distance</h1>
-        <p className="text-muted-foreground">Use your phone’s camera to measure between two spots.</p>
+        <h1 className="text-3xl font-bold tracking-tight">{copy.title}</h1>
+        <p className="text-muted-foreground">{copy.intro}</p>
       </div>
 
       {!availability ? (
@@ -121,14 +144,14 @@ export default function ArPage() {
           <span className="size-5 animate-spin rounded-full border-2 border-current border-t-transparent" aria-hidden="true" />
           Checking your phone…
         </p>
-      ) : status === 'supported' ? (
+      ) : canStart ? (
         <Stack>
-          {showTips && (
+          {showTips && copy.tips.length > 0 && (
             <Card title="How to measure">
               <ol className="flex list-decimal flex-col gap-2 pl-5 text-[15px]">
-                <li>Point your phone at the floor and move it slowly.</li>
-                <li>Tap to place the first point at one end of the thing you’re measuring.</li>
-                <li>Move to the other end and tap again. The length shows straight away.</li>
+                {copy.tips.map((tip) => (
+                  <li key={tip}>{tip}</li>
+                ))}
               </ol>
             </Card>
           )}
@@ -139,43 +162,66 @@ export default function ArPage() {
           <p className="text-sm text-muted-foreground">Lengths show in {UNIT_LABEL[unit].toLowerCase()}. You can change this in Settings.</p>
         </Stack>
       ) : (
-        <ArFallback availability={availability} busy={busy} onInstall={() => void install()} onRetry={recheck} onRuler={() => navigate('/ruler')} />
+        <ArFallback
+          availability={availability}
+          modeUnavailable={status === 'supported'}
+          busy={busy}
+          onInstall={() => void install()}
+          onRetry={recheck}
+          onRuler={() => navigate('/ruler')}
+          onPhoto={() => navigate('/photo')}
+        />
       )}
     </div>
   )
 }
 
+/**
+ * Shown when this mode can't start here: AR is missing or needs the Google app, or (modeUnavailable)
+ * AR works but this build only measures other modes (iOS today). Always offers the ruler and photo measure.
+ */
 function ArFallback({
   availability,
+  modeUnavailable,
   busy,
   onInstall,
   onRetry,
   onRuler,
+  onPhoto,
 }: {
   availability: ArAvailability
+  modeUnavailable: boolean
   busy: boolean
   onInstall: () => void
   onRetry: () => void
   onRuler: () => void
+  onPhoto: () => void
 }) {
-  const { status, reason } = availability
+  const { reason } = availability
+  const status = modeUnavailable ? 'mode-unavailable' : availability.status
   const needsApp = status === 'needs-install' || status === 'needs-update'
-  const heading = needsApp ? 'Measuring with the camera needs a free Google app (Google Play Services for AR)' : 'AR isn’t available on this phone'
-  const explanation = needsApp
-    ? status === 'needs-update'
-      ? 'The copy on your phone needs an update. It’s free and takes a minute in the Play Store.'
-      : 'It’s free and takes a minute to install from the Play Store.'
-    : status === 'unknown'
-      ? reason || 'We couldn’t check whether your phone can measure with the camera. Check your internet connection and try again.'
-      : reason || 'This phone can’t measure with the camera.'
+  const heading = modeUnavailable
+    ? 'Coming soon on this phone'
+    : needsApp
+      ? 'Measuring with the camera needs a free Google app (Google Play Services for AR)'
+      : 'AR isn’t available on this phone'
+  const explanation = modeUnavailable
+    ? null
+    : needsApp
+      ? status === 'needs-update'
+        ? 'The copy on your phone needs an update. It’s free and takes a minute in the Play Store.'
+        : 'It’s free and takes a minute to install from the Play Store.'
+      : status === 'unknown'
+        ? reason || 'We couldn’t check whether your phone can measure with the camera. Check your internet connection and try again.'
+        : reason || 'This phone can’t measure with the camera.'
 
   return (
     <section data-testid="ar-fallback" data-status={status} aria-labelledby="ar-fallback-heading" className="flex flex-col gap-4 rounded-lg border border-border bg-card p-4 sm:p-5">
       <h2 id="ar-fallback-heading" className="text-lg font-semibold">
         {heading}
       </h2>
-      <p className="text-muted-foreground">{explanation}</p>
-      {!needsApp && <p className="text-muted-foreground">The on-screen ruler works on every phone and is great for small things.</p>}
+      {explanation && <p className="text-muted-foreground">{explanation}</p>}
+      {!needsApp && !modeUnavailable && <p className="text-muted-foreground">The on-screen ruler works on every phone and is great for small things.</p>}
       <div className="flex flex-wrap gap-2">
         {needsApp && (
           <Button icon={Download} loading={busy} onClick={onInstall}>
@@ -189,6 +235,9 @@ function ArFallback({
         )}
         <Button variant={needsApp || status === 'unknown' ? 'outline' : 'primary'} icon={Ruler} onClick={onRuler}>
           Use the on-screen ruler
+        </Button>
+        <Button variant="outline" icon={ImageIcon} onClick={onPhoto}>
+          Use photo measure
         </Button>
       </div>
     </section>

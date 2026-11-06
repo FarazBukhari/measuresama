@@ -56,24 +56,26 @@ export default function HomePage() {
         ))}
       </ul>
 
-      <section className="flex flex-col gap-3" aria-labelledby="soon-heading">
-        <h2 id="soon-heading" className="text-lg font-semibold">
-          On the way
-        </h2>
-        <ul className="grid gap-3 sm:grid-cols-2">
-          {soon.map((m) => (
-            <li key={m.id}>
-              <div
-                data-testid="mode-card"
-                data-status={m.status}
-                className="flex min-h-24 cursor-not-allowed items-center gap-4 rounded-lg border border-dashed border-border bg-muted/40 p-4"
-              >
-                <ModeCardBody mode={m} />
-              </div>
-            </li>
-          ))}
-        </ul>
-      </section>
+      {soon.length > 0 && (
+        <section className="flex flex-col gap-3" aria-labelledby="soon-heading">
+          <h2 id="soon-heading" className="text-lg font-semibold">
+            On the way
+          </h2>
+          <ul className="grid gap-3 sm:grid-cols-2">
+            {soon.map((m) => (
+              <li key={m.id}>
+                <div
+                  data-testid="mode-card"
+                  data-status={m.status}
+                  className="flex min-h-24 cursor-not-allowed items-center gap-4 rounded-lg border border-dashed border-border bg-muted/40 p-4"
+                >
+                  <ModeCardBody mode={m} />
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
     </div>
   )
 }

@@ -5,6 +5,7 @@ export type { LengthUnit }
 export const METRES_PER_INCH = 0.0254
 const SQ_METRES_PER_SQ_FOOT = 0.09290304
 const SQ_METRES_PER_SQ_INCH = 0.00064516
+const CUBIC_METRES_PER_CUBIC_FOOT = 0.028316846592
 
 export const UNIT_LABEL: Record<LengthUnit, string> = {
   cm: 'Centimetres (cm)',
@@ -22,10 +23,10 @@ export function metresTo(m: number, unit: LengthUnit): number {
  * The one length format, shared with the native AR label (keep them in step):
  * - cm: under 1 m → "12.3 cm"; from 1 m → "1.23 m".
  * - in: total inches rounded to 0.1 first; under 12 → "7.9 in", else "4 ft 0.6 in".
- * Negative, NaN and infinite values show as "—".
+ * Missing, negative, NaN and infinite values show as "—".
  */
-export function formatLength(m: number, unit: LengthUnit): string {
-  if (!ok(m)) return '—'
+export function formatLength(m: number | undefined, unit: LengthUnit): string {
+  if (m === undefined || !ok(m)) return '—'
   if (unit === 'cm') return m < 1 ? `${(m * 100).toFixed(1)} cm` : `${m.toFixed(2)} m`
   const total = Math.round(metresTo(m, 'in') * 10) / 10
   if (total < 12) return `${total.toFixed(1)} in`
@@ -34,12 +35,29 @@ export function formatLength(m: number, unit: LengthUnit): string {
   return `${feet} ft ${rest.toFixed(1)} in`
 }
 
-/** Areas for later modes: "850 cm²" / "2.50 m²", "96 sq in" / "26.91 sq ft". */
+/** Areas: "850 cm²" / "2.50 m²", "96 sq in" / "26.91 sq ft". Shared with the native label. */
 export function formatArea(m2: number, unit: LengthUnit): string {
   if (!ok(m2)) return '—'
   if (unit === 'cm') return m2 < 1 ? `${Math.round(m2 * 10_000)} cm²` : `${m2.toFixed(2)} m²`
   const sqFt = m2 / SQ_METRES_PER_SQ_FOOT
   return sqFt < 1 ? `${Math.round(m2 / SQ_METRES_PER_SQ_INCH)} sq in` : `${sqFt.toFixed(2)} sq ft`
+}
+
+/** Volumes: under 1 m³ "250 L", else "1.50 m³"; inches → "8.83 ft³". Shared with the native label. */
+export function formatVolume(m3: number, unit: LengthUnit): string {
+  if (!ok(m3)) return '—'
+  if (unit === 'cm') return m3 < 1 ? formatLitres(m3) : `${m3.toFixed(2)} m³`
+  return `${(m3 / CUBIC_METRES_PER_CUBIC_FOOT).toFixed(2)} ft³`
+}
+
+/** Cubic metres as whole litres: "250 L". */
+export function formatLitres(m3: number): string {
+  return ok(m3) ? `${Math.round(m3 * 1000)} L` : '—'
+}
+
+/** Degrees to one decimal: "90.0°". */
+export function formatAngle(deg: number): string {
+  return ok(deg) ? `${deg.toFixed(1)}°` : '—'
 }
 
 /** Countries that measure in inches day to day (US, Liberia, Myanmar). */

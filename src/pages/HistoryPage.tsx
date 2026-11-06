@@ -1,15 +1,10 @@
 import { ChevronRight, FileJson, FileSpreadsheet, History as HistoryIcon, Ruler } from 'lucide-react'
 import { Link, useNavigate } from 'react-router'
-import { MeasurementPhoto } from '../components/MeasurementPhoto'
 import { Button, EmptyState } from '../components/ui'
 import { useDocumentTitle } from '../hooks/useDocumentTitle'
-import { formatDateTime } from '../lib/format'
-import { formatLength } from '../lib/units'
-import { MODES } from '../modes/catalog'
+import { ResultSummary } from '../modes/results/ResultSummary'
 import { exportCsv, exportJson, historyStore } from '../state/history'
 import { unitStore } from '../state/settings'
-
-const modeName = (id: string) => MODES.find((m) => m.id === id)?.name ?? 'Measurement'
 
 export default function HistoryPage() {
   useDocumentTitle('History')
@@ -45,13 +40,7 @@ export default function HistoryPage() {
                   data-testid="history-row"
                   className="flex min-h-16 items-center gap-3 rounded-lg border border-border bg-card p-2 pr-3 shadow-xs transition-colors duration-150 hover:bg-muted/60"
                 >
-                  <MeasurementPhoto uri={item.screenshotUri} alt="" className="size-14 shrink-0 rounded-md" />
-                  <span className="flex min-w-0 flex-1 flex-col">
-                    <span className="font-mono text-lg font-bold tabular-nums">{formatLength(item.distanceM, unit)}</span>
-                    <span className="truncate text-sm text-muted-foreground">
-                      {[modeName(item.mode), formatDateTime(item.createdAt), item.note].filter(Boolean).join(' · ')}
-                    </span>
-                  </span>
+                  <ResultSummary item={item} unit={unit} />
                   <ChevronRight className="size-5 shrink-0 text-muted-foreground" aria-hidden="true" />
                 </Link>
               </li>

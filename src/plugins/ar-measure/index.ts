@@ -1,5 +1,5 @@
 import { Capacitor, registerPlugin } from '@capacitor/core'
-import type { ArAvailability, ArAvailabilityStatus, ArMeasureErrorCode, ArMeasurement, ArMeasurePlugin, ArStartResult } from './definitions'
+import type { ArAvailability, ArAvailabilityStatus, ArMeasureErrorCode, ArMeasurement, ArMeasurePlugin, ArMode, ArPluginMode, ArStartResult } from './definitions'
 
 export * from './definitions'
 
@@ -7,8 +7,42 @@ export const ArMeasure = registerPlugin<ArMeasurePlugin>('ArMeasure', {
   web: () => import('./web').then((m) => new m.ArMeasureWeb()),
 })
 
+/** Every mode the native plugin can measure, in catalog order. */
+export const AR_PLUGIN_MODES: readonly ArPluginMode[] = ['distance', 'path', 'area', 'angle', 'height', 'volume', 'room-plan']
+
+const isPluginMode = (m: unknown): m is ArPluginMode => typeof m === 'string' && (AR_PLUGIN_MODES as readonly string[]).includes(m)
+const isLen = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v) && v >= 0
+const isLenList = (v: unknown): v is number[] => Array.isArray(v) && v.every(isLen)
+const isCoord = (v: unknown) => typeof v === 'number' && Number.isFinite(v)
+const isPoint = (p: unknown) => !!p && typeof p === 'object' && isCoord((p as Record<string, unknown>).x) && isCoord((p as Record<string, unknown>).y) && isCoord((p as Record<string, unknown>).z)
+
+/** Required fields of each mode (see definitions.ts). */
+const REQUIRED: Record<ArPluginMode, (r: Record<string, unknown>) => boolean> = {
+  distance: (r) => isLen(r.distanceM),
+  path: (r) => isLen(r.distanceM) && isLenList(r.segmentsM),
+  area: (r) => isLen(r.areaM2) && isLen(r.perimeterM) && isLenList(r.segmentsM),
+  angle: (r) => isLen(r.angleDeg) && (r.angleDeg as number) <= 180 && isLenList(r.segmentsM),
+  height: (r) => isLen(r.heightM),
+  volume: (r) => isLen(r.lengthM) && isLen(r.widthM) && isLen(r.heightM) && isLen(r.volumeM3) && isLen(r.areaM2),
+  'room-plan': (r) => isLen(r.areaM2) && isLen(r.perimeterM) && isLenList(r.segmentsM) && (r.wallHeightM === undefined || isLen(r.wallHeightM)),
+}
+
+/** A finished measurement with every field its mode needs (finite, not negative) and well-formed points. */
 export function isArMeasurement(r: ArStartResult | null | undefined): r is ArMeasurement {
-  return !!r && r.cancelled === false && Number.isFinite(r.distanceM)
+  if (!r || typeof r !== 'object' || r.cancelled !== false) return false
+  const rec = r as unknown as Record<string, unknown>
+  if (!isPluginMode(rec.mode) || !Array.isArray(rec.points) || !rec.points.every(isPoint)) return false
+  return REQUIRED[rec.mode](rec)
+}
+
+/** AR modes start() may be called with: none unless AR is supported; older builds only know distance. */
+export function availableArModes(a: ArAvailability | null | undefined): ArMode[] {
+  if (a?.status !== 'supported') return []
+  return Array.isArray(a.modes) ? a.modes.filter(isPluginMode) : ['distance']
+}
+
+export function canStartMode(a: ArAvailability | null | undefined, mode: ArMode): boolean {
+  return availableArModes(a).includes(mode)
 }
 
 export const NO_PLUGIN_REASON = 'Measuring with the camera isn’t available in this version of the app.'
