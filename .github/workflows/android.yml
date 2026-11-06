@@ -1,0 +1,102 @@
+name: Android app
+
+on:
+  push:
+    branches: [main, 'faraz-dev/**']
+    tags: ['v*']
+  workflow_dispatch:
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: android-actions/setup-android@v4
+        with:
+          packages: platform-tools platforms;android-36 build-tools;36.0.0
+      - run: npm ci
+      - name: Build web app and sync into the native project
+        run: npm run build && npx cap sync android
+      - name: Build debug APK
+        working-directory: android
+        run: ./gradlew assembleDebug --no-daemon
+      - name: Android unit tests (AR math, length labels)
+        working-directory: android
+        run: ./gradlew testDebugUnitTest --no-daemon
+      - name: Rename APK
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk measuresama.apk
+      - uses: actions/upload-artifact@v7
+        with:
+          name: measuresama-apk
+          path: measuresama.apk
+      - name: Attach APK to release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v3
+        with:
+          files: measuresama.apk
+
+  # Runs the app itself on an Android emulator and drives its WebView with Playwright:
+  # the app opens, files are saved to the phone, the AR screen falls back cleanly, back button, etc.
+  device-tests:
+    needs: apk
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Install Playwright's Android driver
+        run: npx playwright install android
+      - uses: actions/download-artifact@v7
+        with:
+          name: measuresama-apk
+      - name: Free disk space for the emulator
+        # The emulator needs ~8 GB for its data partition; hosted runners ship with
+        # large toolchains this job never uses.
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/.ghcup /usr/local/share/boost /usr/local/lib/android/sdk/ndk "$AGENT_TOOLSDIRECTORY/CodeQL"
+          df -h /
+      - name: Enable KVM for the emulator
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Run the app on an Android 14 emulator and test it
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          ram-size: 3072M
+          disk-size: 2G
+          emulator-options: -no-window -no-snapshot -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back emulated -camera-front emulated
+          disable-animations: true
+          script: |
+            adb install -r -g measuresama.apk
+            npx playwright test -c playwright.android.config.ts
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: android-device-test-report
+          path: |
+            playwright-report-android
+            test-results/android
+          retention-days: 7
