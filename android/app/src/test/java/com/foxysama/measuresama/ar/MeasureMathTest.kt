@@ -1,5 +1,6 @@
 package com.foxysama.measuresama.ar
 
+import kotlin.math.abs
 import kotlin.math.sqrt
 import kotlin.math.tan
 import org.junit.Assert.assertEquals
@@ -218,5 +219,234 @@ class MeasureMathTest {
         val target = Vec3(1f, 1f, 1f)
         repeat(30) { p = MeasureMath.lowPass(p, target) }
         assertVec(target, p, 1e-3f)
+    }
+
+    // ---- shapes ----
+
+    private val rect2x3 = listOf(Vec3(0f, 0f, 0f), Vec3(2f, 0f, 0f), Vec3(2f, 0f, 3f), Vec3(0f, 0f, 3f))
+
+    @Test
+    fun crossFollowsTheRightHandRule() {
+        assertVec(Vec3(0f, 0f, 1f), Vec3(1f, 0f, 0f).cross(Vec3(0f, 1f, 0f)))
+        assertVec(Vec3(1f, 0f, 0f), Vec3(0f, 1f, 0f).cross(Vec3(0f, 0f, 1f)))
+    }
+
+    @Test
+    fun segmentLengthsOpenAndClosed() {
+        val open = MeasureMath.segmentLengths(rect2x3, closed = false)
+        assertEquals(listOf(2.0, 3.0, 2.0), open)
+        val closed = MeasureMath.segmentLengths(rect2x3, closed = true)
+        assertEquals(listOf(2.0, 3.0, 2.0, 3.0), closed)
+        // Two points never get a closing side.
+        assertEquals(listOf(2.0), MeasureMath.segmentLengths(rect2x3.take(2), closed = true))
+        assertTrue(MeasureMath.segmentLengths(rect2x3.take(1), closed = true).isEmpty())
+    }
+
+    @Test
+    fun polylineAndPerimeter() {
+        assertEquals(7.0, MeasureMath.polylineLength(rect2x3), 1e-9)
+        assertEquals(10.0, MeasureMath.polygonPerimeter(rect2x3), 1e-9)
+        assertEquals(0.0, MeasureMath.polylineLength(emptyList()), 0.0)
+        val bent = listOf(Vec3(0f, 0f, 0f), Vec3(3f, 0f, 0f), Vec3(3f, 4f, 0f))
+        assertEquals(7.0, MeasureMath.polylineLength(bent), 1e-9)
+        assertEquals(12.0, MeasureMath.polygonPerimeter(bent), 1e-6)
+    }
+
+    @Test
+    fun planeBasisIsOrthonormal() {
+        val normals = listOf(
+            Vec3(0f, 1f, 0f), Vec3(1f, 0f, 0f), Vec3(0f, 0f, -1f),
+            Vec3(0.3f, 0.8f, -0.5f), Vec3(-2f, 0.1f, 0.4f),
+        )
+        for (raw in normals) {
+            val n = raw.normalized()
+            val (u, v) = MeasureMath.planeBasis(raw)
+            assertEquals(1f, u.length(), eps)
+            assertEquals(1f, v.length(), eps)
+            assertEquals(0f, u.dot(v), eps)
+            assertEquals(0f, u.dot(n), eps)
+            assertEquals(0f, v.dot(n), eps)
+        }
+        // A zero normal falls back to up: the basis lies in the floor.
+        val (u, v) = MeasureMath.planeBasis(Vec3(0f, 0f, 0f))
+        assertEquals(0f, u.y, eps)
+        assertEquals(0f, v.y, eps)
+    }
+
+    @Test
+    fun rectangleAreaOnTheFloor() {
+        assertEquals(6.0, MeasureMath.polygonArea(rect2x3, Vec3(0f, 1f, 0f)), 1e-6)
+        // The normal's sign doesn't matter.
+        assertEquals(6.0, MeasureMath.polygonArea(rect2x3, Vec3(0f, -1f, 0f)), 1e-6)
+    }
+
+    @Test
+    fun rectangleAreaFarFromTheOrigin() {
+        val far = rect2x3.map { it + Vec3(120f, -1.5f, -80f) }
+        assertEquals(6.0, MeasureMath.polygonArea(far, Vec3(0f, 1f, 0f)), 1e-4)
+    }
+
+    @Test
+    fun rectangleAreaOnATiltedPlane() {
+        // The floor rectangle tilted 30 degrees about the x axis.
+        val c = kotlin.math.cos(Math.toRadians(30.0)).toFloat()
+        val s = kotlin.math.sin(Math.toRadians(30.0)).toFloat()
+        fun tilt(p: Vec3) = Vec3(p.x, p.y * c - p.z * s, p.y * s + p.z * c)
+        val tilted = rect2x3.map(::tilt)
+        val normal = tilt(Vec3(0f, 1f, 0f))
+        assertEquals(6.0, MeasureMath.polygonArea(tilted, normal), 1e-5)
+        // Projected onto the floor it looks smaller: 6 * cos 30.
+        assertEquals(6.0 * c, MeasureMath.polygonArea(tilted, Vec3(0f, 1f, 0f)), 1e-5)
+    }
+
+    @Test
+    fun rectangleAreaOnAWall() {
+        val wall = listOf(Vec3(1f, 0f, 0f), Vec3(1f, 2f, 0f), Vec3(1f, 2f, 3f), Vec3(1f, 0f, 3f))
+        assertEquals(6.0, MeasureMath.polygonArea(wall, Vec3(1f, 0f, 0f)), 1e-6)
+        // Projected onto the floor, a wall has no area.
+        assertEquals(0.0, MeasureMath.polygonArea(wall, Vec3(0f, 1f, 0f)), 1e-6)
+    }
+
+    @Test
+    fun triangleArea() {
+        val tri = listOf(Vec3(0f, 0f, 0f), Vec3(4f, 0f, 0f), Vec3(0f, 0f, 3f))
+        assertEquals(6.0, MeasureMath.polygonArea(tri, Vec3(0f, 1f, 0f)), 1e-6)
+    }
+
+    @Test
+    fun areaIsTheSameClockwiseAndCounterClockwise() {
+        val ccw = MeasureMath.polygonArea(rect2x3, Vec3(0f, 1f, 0f))
+        val cw = MeasureMath.polygonArea(rect2x3.reversed(), Vec3(0f, 1f, 0f))
+        assertEquals(ccw, cw, 1e-9)
+        assertEquals(6.0, cw, 1e-6)
+    }
+
+    @Test
+    fun areaNeedsThreePoints() {
+        assertEquals(0.0, MeasureMath.polygonArea(rect2x3.take(2), Vec3(0f, 1f, 0f)), 0.0)
+    }
+
+    @Test
+    fun newellNormalFindsThePlane() {
+        val n = MeasureMath.newellNormal(rect2x3)
+        assertNotNull(n)
+        assertEquals(1f, abs(n!!.y), eps)
+        assertNull(MeasureMath.newellNormal(listOf(Vec3(0f, 0f, 0f), Vec3(1f, 0f, 0f), Vec3(2f, 0f, 0f))))
+        assertNull(MeasureMath.newellNormal(rect2x3.take(2)))
+    }
+
+    // ---- angle ----
+
+    @Test
+    fun rightAngle() {
+        assertEquals(90.0, MeasureMath.angleDeg(Vec3(1f, 0f, 0f), Vec3(0f, 0f, 0f), Vec3(0f, 0f, 1f)), 1e-6)
+    }
+
+    @Test
+    fun fortyFiveDegrees() {
+        val v = Vec3(1f, 2f, 3f)
+        assertEquals(45.0, MeasureMath.angleDeg(v + Vec3(2f, 0f, 0f), v, v + Vec3(1f, 1f, 0f)), 1e-4)
+    }
+
+    @Test
+    fun straightAngle() {
+        assertEquals(180.0, MeasureMath.angleDeg(Vec3(-1f, 0f, 0f), Vec3(0f, 0f, 0f), Vec3(3f, 0f, 0f)), 1e-6)
+        assertEquals(0.0, MeasureMath.angleDeg(Vec3(1f, 0f, 0f), Vec3(0f, 0f, 0f), Vec3(3f, 0f, 0f)), 1e-3)
+    }
+
+    @Test
+    fun degenerateAngleIsZero() {
+        val o = Vec3(0f, 0f, 0f)
+        assertEquals(0.0, MeasureMath.angleDeg(o, o, Vec3(1f, 0f, 0f)), 0.0)
+        assertEquals(0.0, MeasureMath.angleDeg(Vec3(1f, 0f, 0f), o, o), 0.0)
+    }
+
+    // ---- vertical aim ----
+
+    private val poleBase = Vec3(0f, 0f, -2f)
+
+    @Test
+    fun verticalAimFindsThePoleHeight() {
+        // Camera at eye height 2 m in front of the pole, looking up at its top (2.5 m).
+        val origin = Vec3(0f, 1.5f, 0f)
+        val ray = Ray(origin, (Vec3(0f, 2.5f, -2f) - origin).normalized())
+        assertVec(Vec3(0f, 2.5f, -2f), MeasureMath.verticalAim(poleBase, ray))
+    }
+
+    @Test
+    fun verticalAimFromTheSide() {
+        // A level ray 1 m up that passes 1 m to the side of the pole: the closest point is 1 m up.
+        val ray = Ray(Vec3(1f, 1f, 0f), Vec3(0f, 0f, -1f))
+        assertVec(Vec3(0f, 1f, -2f), MeasureMath.verticalAim(poleBase, ray))
+    }
+
+    @Test
+    fun verticalAimWithAVerticalRayIsNull() {
+        assertNull(MeasureMath.verticalAim(poleBase, Ray(Vec3(0.5f, 3f, -2f), Vec3(0f, -1f, 0f))))
+        assertNull(MeasureMath.verticalAim(poleBase, Ray(Vec3(0.5f, 0f, -2f), Vec3(0f, 1f, 0f))))
+    }
+
+    @Test
+    fun verticalAimIsClamped() {
+        val origin = Vec3(0f, 1.5f, 0f)
+        val high = Ray(origin, (Vec3(0f, 40f, -2f) - origin).normalized())
+        assertVec(Vec3(0f, 10f, -2f), MeasureMath.verticalAim(poleBase, high))
+        assertVec(Vec3(0f, 3f, -2f), MeasureMath.verticalAim(poleBase, high, maxHeight = 3f))
+        val low = Ray(origin, (Vec3(0f, -1f, -2f) - origin).normalized())
+        assertVec(poleBase, MeasureMath.verticalAim(poleBase, low))
+    }
+
+    @Test
+    fun verticalAimBehindTheCameraIsNull() {
+        assertNull(MeasureMath.verticalAim(poleBase, Ray(Vec3(0f, 1.5f, 0f), Vec3(0f, 0f, 1f))))
+    }
+
+    // ---- box ----
+
+    @Test
+    fun snapPerpendicularSquaresTheCorner() {
+        val a = Vec3(0f, 0f, 0f)
+        val b = Vec3(1f, 0f, 0f)
+        assertVec(Vec3(1f, 0f, 0.5f), MeasureMath.snapPerpendicular(a, b, Vec3(1.2f, 0.3f, 0.5f)))
+    }
+
+    @Test
+    fun snapPerpendicularOnADiagonalEdge() {
+        val a = Vec3(0f, 0.2f, 0f)
+        val b = Vec3(1f, 0f, 1f)
+        val c = b + Vec3(0.5f, 0f, -0.5f) + Vec3(0.2f, 0f, 0.2f) + Vec3(0f, 0.1f, 0f)
+        val snapped = MeasureMath.snapPerpendicular(a, b, c)
+        assertVec(b + Vec3(0.5f, 0f, -0.5f), snapped)
+        assertEquals(b.y, snapped.y, eps)
+        val ab = b - a
+        assertEquals(0f, Vec3(ab.x, 0f, ab.z).dot(snapped - b), eps)
+    }
+
+    @Test
+    fun boxVolume() {
+        val box = MeasureMath.boxResult(
+            Vec3(0f, 0f, 0f), Vec3(1f, 0f, 0f), Vec3(1f, 0f, 0.5f), Vec3(1f, 2f, 0.5f),
+        )
+        assertEquals(1.0, box.lengthM, 1e-6)
+        assertEquals(0.5, box.widthM, 1e-6)
+        assertEquals(2.0, box.heightM, 1e-6)
+        assertEquals(0.5, box.areaM2, 1e-6)
+        assertEquals(1.0, box.volumeM3, 1e-6)
+    }
+
+    @Test
+    fun boxSnapsTheThirdCorner() {
+        val box = MeasureMath.boxResult(
+            Vec3(0f, 0f, 0f), Vec3(1f, 0f, 0f), Vec3(1.3f, 0.05f, 0.5f), Vec3(1f, 2f, 0.5f),
+        )
+        assertEquals(0.5, box.widthM, 1e-6)
+        assertEquals(2.0, box.heightM, 1e-6)
+        assertEquals(1.0, box.volumeM3, 1e-5)
+    }
+
+    @Test
+    fun screenDistanceIsInPixels() {
+        assertEquals(5f, MeasureMath.screenDistance(ScreenPoint(1f, 2f), ScreenPoint(4f, 6f)), eps)
+        assertEquals(0f, MeasureMath.screenDistance(ScreenPoint(1f, 2f), ScreenPoint(1f, 2f)), 0f)
     }
 }
