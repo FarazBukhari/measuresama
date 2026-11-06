@@ -1,0 +1,42 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+.env
+.env.*
+!.env.example
+
+# Editor
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+
+# Playwright
+test-results/
+playwright-report/
+blob-report/
+playwright-report-android/
+
+# Capacitor native build outputs
+android/app/build/
+android/build/
+android/.gradle/
+android/local.properties
+ios/App/Pods/
+ios/App/build/
+ios/DerivedData/
+
+# Reverse-engineering inputs and outputs: never commit
+*.apk
+*.xapk
+*.apks
+*.aab
+*.dex
+rea-work/
+decompiled/
