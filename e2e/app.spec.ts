@@ -27,19 +27,26 @@ async function seedHistory(page: Page) {
   }, SEED)
 }
 
-test('home lists the available modes and the ones coming soon', async ({ page }) => {
+test('home lists every mode as a link', async ({ page }) => {
   const errors = collectErrors(page)
   await page.goto('/')
   const cards = page.getByTestId('mode-card')
   await expect(cards).toHaveCount(9)
-  await expect(page.locator('[data-testid="mode-card"][data-status="available"]')).toHaveText([/Distance/, /On-screen ruler/])
-  const soon = page.locator('[data-testid="mode-card"][data-status="coming-soon"]')
-  await expect(soon).toHaveCount(7)
-  for (const name of ['Height', 'Angle', 'Path', 'Area & perimeter', 'Volume', 'Room plan + PDF', 'Photo measure']) {
-    await expect(soon.filter({ hasText: name }).getByText('Coming soon', { exact: true })).toBeVisible()
-  }
-  // Coming-soon cards are not links or buttons.
-  await expect(soon.locator('a, button')).toHaveCount(0)
+  await expect(page.locator('[data-testid="mode-card"][data-status="available"]')).toHaveText([
+    /Distance/,
+    /On-screen ruler/,
+    /Height/,
+    /Angle/,
+    /Path/,
+    /Area & perimeter/,
+    /Volume/,
+    /Room plan \+ PDF/,
+    /Photo measure/,
+  ])
+  // Every card is a link; nothing is marked as coming soon.
+  await expect(page.locator('a[data-testid="mode-card"]')).toHaveCount(9)
+  await expect(page.getByText('Coming soon', { exact: true })).toHaveCount(0)
+  await expect(page.getByRole('heading', { name: 'On the way' })).toHaveCount(0)
 
   await page.getByRole('link', { name: /On-screen ruler/ }).click()
   await expect(page.getByRole('heading', { level: 1, name: 'On-screen ruler' })).toBeVisible()

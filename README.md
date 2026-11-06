@@ -1,15 +1,16 @@
 # Measure Sama
 
-A free AR tape measure for your phone. Point the camera, tap two points and read the distance in cm or inches. Phones without AR get an on-screen ruler instead. Everything stays on the phone.
+A free AR tape measure for your phone. Point the camera, tap points and read distance, path, area, angle, height, volume or a room plan in cm or inches. Phones without AR get an on-screen ruler instead. Everything stays on the phone.
 
 App id: `com.foxysama.measuresama` (never changes).
 
 ## Status
 
-- Android: AR distance mode (ARCore). Built and unit tested, but not yet checked on a real phone. See the checklist in [docs/PLAN.md](docs/PLAN.md).
-- On-screen ruler with bank-card calibration, history, units, settings, share and CSV/JSON export: done.
-- Other modes (height, angle, path, area, volume, room plan, photo): coming soon. They show a "Coming soon" badge.
-- iOS: ARKit/RealityKit code is written but **NOT BUILT OR TESTED**. There is no Xcode and no cloud iOS build yet.
+- Android: AR modes done: distance, path, area & perimeter, angle, height, volume, room plan with PDF. One shared engine. Built and unit tested, but not yet checked on a real phone. See the checklists in [docs/PLAN.md](docs/PLAN.md).
+- Photo measure (bank card for scale, no AR), on-screen ruler with bank-card calibration, history, units, settings, share and CSV/JSON export: done.
+- Still to do: rectangle and circle modes.
+- iOS: ARKit/RealityKit code covers distance only and is **NOT BUILT OR TESTED**. There is no Xcode and no cloud iOS build yet.
+- Web: no AR. Shows the fallback, photo measure and the on-screen ruler.
 
 ## Run the web app
 
@@ -62,7 +63,7 @@ Open `ios/App` in Xcode, set the signing team, then run on a real iPhone (AR doe
 
 ```
 src/pages/            Home, AR entry, ruler, history, settings
-src/modes/            Mode catalog and the on-screen ruler
+src/modes/            Mode catalog, AR copy, results summary, photo measure, room plan, on-screen ruler
 src/plugins/ar-measure/   ArMeasure plugin: TS contract + web fallback
 src/state/, src/lib/  Settings, history, units, downloads
 android/app/src/main/java/com/foxysama/measuresama/ar/   Kotlin + ARCore
