@@ -1,8 +1,9 @@
-import { Ruler, Trash2 } from 'lucide-react'
+import { Lock, Monitor, Moon, Ruler, Sun, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { useNavigate } from 'react-router'
 import { ChoiceGroup } from '../components/ChoiceGroup'
-import { Button, Card, Stack, Switch } from '../components/ui'
+import { PageHeader } from '../components/layout/PageHeader'
+import { Button, List, ListRow, Switch } from '../components/ui'
 import { useDocumentTitle } from '../hooks/useDocumentTitle'
 import { UNIT_LABEL, type LengthUnit } from '../lib/units'
 import { forgetThisScreen } from '../modes/screen-ruler/calibration'
@@ -15,11 +16,13 @@ const UNIT_CHOICES: { value: LengthUnit; label: string }[] = [
   { value: 'in', label: UNIT_LABEL.in },
 ]
 
-const THEME_CHOICES: { value: ThemePreference; label: string }[] = [
-  { value: 'system', label: 'System' },
-  { value: 'light', label: 'Light' },
-  { value: 'dark', label: 'Dark' },
+const THEME_CHOICES: { value: ThemePreference; label: string; icon: typeof Sun }[] = [
+  { value: 'system', label: 'System', icon: Monitor },
+  { value: 'light', label: 'Light', icon: Sun },
+  { value: 'dark', label: 'Dark', icon: Moon },
 ]
+
+const sectionLabel = 'mb-2 text-sm font-semibold text-muted-foreground'
 
 export default function SettingsPage() {
   useDocumentTitle('Settings')
@@ -43,58 +46,67 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
+    <div className="flex flex-col">
+      <PageHeader title="Settings" />
 
-      <Card title="Units">
-        <ChoiceGroup legend="Show lengths in" value={unit} onChange={setUnit} choices={UNIT_CHOICES} hint="Long lengths show in metres (m) or feet and inches (ft)." />
-      </Card>
+      <div className="flex flex-col gap-6">
+        <section>
+          <h2 className={sectionLabel}>Units</h2>
+          <ChoiceGroup legend="Units" value={unit} onChange={setUnit} choices={UNIT_CHOICES} className="[&>legend]:sr-only" />
+        </section>
 
-      <Card title="Look">
-        <Stack>
-          <ChoiceGroup legend="Theme" value={theme} onChange={setTheme} choices={THEME_CHOICES} hint="System follows your phone’s light or dark setting." />
-          <Switch label="Show tips" description="Short how-to hints on the measuring screens." checked={showTips} onChange={setShowTips} />
-        </Stack>
-      </Card>
-
-      <Card title="On-screen ruler" description="Forget this screen’s size check and do it again with a bank card.">
-        <Button variant="outline" icon={Ruler} onClick={recalibrate}>
-          Recalibrate on-screen ruler
-        </Button>
-      </Card>
-
-      <Card title="History" description={history.length ? `${history.length} saved ${history.length === 1 ? 'measurement' : 'measurements'}.` : 'No saved measurements.'}>
-        <Stack gap={3}>
-          <div>
-            <Button variant="outline" icon={Trash2} onClick={() => setConfirmClear(true)} disabled={!history.length || confirmClear}>
-              Clear history
-            </Button>
+        <section>
+          <h2 className={sectionLabel}>Look</h2>
+          <div className="flex flex-col gap-3">
+            <ChoiceGroup legend="Theme" value={theme} onChange={setTheme} choices={THEME_CHOICES} className="[&>legend]:sr-only" />
+            <List>
+              <li className="px-4 py-2">
+                <Switch label="Show tips" checked={showTips} onChange={setShowTips} />
+              </li>
+            </List>
           </div>
-          {confirmClear && (
-            <div role="alertdialog" aria-labelledby="clear-title" className="flex flex-col gap-3 rounded-lg border border-destructive/40 bg-destructive-soft p-4 text-destructive-soft-foreground">
-              <p id="clear-title" className="font-semibold">
-                Delete all {history.length} measurements and their photos? This can’t be undone.
-              </p>
-              <div className="flex flex-wrap gap-2">
-                <Button variant="danger" icon={Trash2} onClick={() => void clear()}>
-                  Yes, delete all
-                </Button>
-                <Button variant="outline" onClick={() => setConfirmClear(false)}>
-                  Cancel
-                </Button>
-              </div>
-            </div>
-          )}
-        </Stack>
-      </Card>
+        </section>
 
-      <Card title="About">
-        <div className="flex flex-col gap-1 text-[15px]">
-          <p className="font-semibold">Measure Sama</p>
-          <p className="text-muted-foreground">Version {__APP_VERSION__}</p>
-          <p>Everything stays on your phone. Measurements, photos and settings are never uploaded.</p>
-        </div>
-      </Card>
+        <section>
+          <h2 className={sectionLabel}>Ruler and history</h2>
+          <div className="flex flex-col gap-3">
+            <List>
+              <ListRow as="button" leading={<Ruler aria-hidden="true" />} label="Recalibrate on-screen ruler" chevron onClick={recalibrate} />
+              <ListRow
+                as="button"
+                leading={<Trash2 aria-hidden="true" />}
+                label="Clear history"
+                trailing={<span className="text-muted-foreground tabular-nums">{history.length}</span>}
+                disabled={!history.length || confirmClear}
+                onClick={() => setConfirmClear(true)}
+              />
+            </List>
+            {confirmClear && (
+              <div role="alertdialog" aria-labelledby="clear-title" className="flex flex-col gap-3 rounded-[20px] bg-destructive-soft p-4 text-destructive-soft-foreground">
+                <p id="clear-title" className="font-semibold">
+                  Delete all {history.length} measurements and photos?
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <Button variant="danger" onClick={() => void clear()}>
+                    Yes, delete all
+                  </Button>
+                  <Button variant="secondary" onClick={() => setConfirmClear(false)}>
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        </section>
+
+        <section>
+          <h2 className={sectionLabel}>About</h2>
+          <List>
+            <ListRow label="Version" trailing={<span className="text-muted-foreground tabular-nums">{__APP_VERSION__}</span>} />
+            <ListRow leading={<Lock aria-hidden="true" />} label="Stays on your phone" />
+          </List>
+        </section>
+      </div>
     </div>
   )
 }

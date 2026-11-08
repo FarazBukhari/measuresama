@@ -111,7 +111,7 @@ describe('AR distance page', () => {
     plugin.start.mockRejectedValue(Object.assign(new Error('nope'), { code: 'NOT_IMPLEMENTED' }))
     renderPage()
     await userEvent.click(await screen.findByRole('button', { name: 'Start measuring' }))
-    expect(await screen.findByText('This measuring mode is coming soon.')).toBeInTheDocument()
+    expect(await screen.findByText('This mode is coming soon.')).toBeInTheDocument()
   })
 
   it('offers the Google app when it is missing, and checks again after installing', async () => {
@@ -119,7 +119,7 @@ describe('AR distance page', () => {
     plugin.requestArInstall.mockResolvedValue('supported')
     renderPage()
     const fallback = await screen.findByTestId('ar-fallback')
-    expect(fallback).toHaveTextContent('Measuring with the camera needs a free Google app (Google Play Services for AR)')
+    expect(fallback).toHaveTextContent('One free app needed')
     expect(screen.getByRole('button', { name: 'Use the on-screen ruler' })).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: 'Install it' }))
     expect(plugin.requestArInstall).toHaveBeenCalledTimes(1)
@@ -131,7 +131,7 @@ describe('AR distance page', () => {
     plugin.checkArAvailability.mockResolvedValue({ status: 'unknown', platform: 'android' })
     renderPage()
     const fallback = await screen.findByTestId('ar-fallback')
-    expect(fallback).toHaveTextContent('AR isn’t available on this phone')
+    expect(fallback).toHaveTextContent('Couldn’t check this phone')
     await userEvent.click(screen.getByRole('button', { name: 'Try again' }))
     await screen.findByTestId('ar-fallback')
     expect(plugin.checkArAvailability).toHaveBeenCalledTimes(2)

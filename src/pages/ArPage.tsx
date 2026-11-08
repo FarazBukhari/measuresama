@@ -1,15 +1,29 @@
 import { Camera, Download, RefreshCw, Ruler } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
+import { ArGestureArt, InstallArt, NoCameraArt, ScanStepArt, TapEndArt, TapStartArt } from '../components/ModeArt'
+import { ChoiceGroup } from '../components/ChoiceGroup'
+import { PageHeader } from '../components/layout/PageHeader'
 import { Alert, Button, Card, Stack } from '../components/ui'
 import { useDocumentTitle } from '../hooks/useDocumentTitle'
-import { UNIT_LABEL } from '../lib/units'
+import type { LengthUnit } from '../lib/units'
 import { ArMeasure, arErrorCode, checkArAvailability, isArMeasurement, requestArInstall, type ArAvailability, type ArCancelled } from '../plugins/ar-measure'
 import { addFromArResult } from '../state/history'
-import { showTipsStore, unitStore } from '../state/settings'
+import { setUnit, showTipsStore, unitStore } from '../state/settings'
 import { toast } from '../state/toast'
 
-export const PERMISSION_MESSAGE = "Measure Sama needs the camera to measure. You can allow it in your phone's Settings."
+const UNIT_CHOICES: { value: LengthUnit; label: string }[] = [
+  { value: 'cm', label: 'cm' },
+  { value: 'in', label: 'in' },
+]
+
+const STEPS = [
+  { Art: ScanStepArt, text: 'Scan the floor' },
+  { Art: TapStartArt, text: 'Tap one end' },
+  { Art: TapEndArt, text: 'Tap the other end' },
+]
+
+export const PERMISSION_MESSAGE = 'Allow the camera in your phone’s Settings to measure.'
 
 interface Notice {
   tone: 'error' | 'warning' | 'info'
@@ -21,9 +35,9 @@ function cancelledNotice(r: ArCancelled): Notice | null {
     case 'permission-denied':
       return { tone: 'warning', text: PERMISSION_MESSAGE }
     case 'ar-unavailable':
-      return { tone: 'warning', text: r.message || 'Measuring with the camera isn’t available right now. Please try again.' }
+      return { tone: 'warning', text: r.message || 'The camera isn’t ready. Try again.' }
     case 'tracking-lost':
-      return { tone: 'warning', text: r.message || 'The phone lost its place. Try again in good light and move your phone slowly.' }
+      return { tone: 'warning', text: r.message || 'Lost its place. Try again in good light.' }
     default:
       return null // The user closed the camera screen: nothing to say.
   }
@@ -32,13 +46,13 @@ function cancelledNotice(r: ArCancelled): Notice | null {
 function errorNotice(e: unknown): Notice {
   switch (arErrorCode(e)) {
     case 'NOT_IMPLEMENTED':
-      return { tone: 'info', text: 'This measuring mode is coming soon.' }
+      return { tone: 'info', text: 'This mode is coming soon.' }
     case 'BUSY':
-      return { tone: 'info', text: 'The camera screen is already open.' }
+      return { tone: 'info', text: 'The camera is already open.' }
     case 'UNAVAILABLE':
-      return { tone: 'error', text: 'Measuring with the camera isn’t available on this phone.' }
+      return { tone: 'error', text: 'This phone can’t measure with the camera.' }
     default:
-      return { tone: 'error', text: 'Something went wrong. Please try again.' }
+      return { tone: 'error', text: 'Something went wrong. Try again.' }
   }
 }
 
@@ -110,11 +124,8 @@ export default function ArPage() {
   const status = availability?.status
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-1">
-        <h1 className="text-3xl font-bold tracking-tight">Measure a distance</h1>
-        <p className="text-muted-foreground">Use your phone’s camera to measure between two spots.</p>
-      </div>
+    <div className="flex flex-col">
+      <PageHeader back="/" title="Measure a distance" />
 
       {!availability ? (
         <p role="status" className="flex items-center gap-3 text-muted-foreground">
@@ -123,20 +134,29 @@ export default function ArPage() {
         </p>
       ) : status === 'supported' ? (
         <Stack>
+          <Card>
+            <div className="flex justify-center">
+              <ArGestureArt className="w-full max-w-60" />
+            </div>
+          </Card>
           {showTips && (
-            <Card title="How to measure">
-              <ol className="flex list-decimal flex-col gap-2 pl-5 text-[15px]">
-                <li>Point your phone at the floor and move it slowly.</li>
-                <li>Tap to place the first point at one end of the thing you’re measuring.</li>
-                <li>Move to the other end and tap again. The length shows straight away.</li>
-              </ol>
-            </Card>
+            <ol aria-label="How to measure" className="grid grid-cols-3 gap-2">
+              {STEPS.map(({ Art, text }) => (
+                <li key={text} className="flex flex-col items-center gap-2 text-center text-sm font-semibold">
+                  <Art className="size-12" />
+                  {text}
+                </li>
+              ))}
+            </ol>
           )}
           {notice && <Alert tone={notice.tone}>{notice.text}</Alert>}
-          <Button size="lg" icon={Camera} fullWidth loading={busy} onClick={() => void start()} className="h-14 text-lg">
+          <Button size="lg" icon={Camera} fullWidth loading={busy} onClick={() => void start()}>
             Start measuring
           </Button>
-          <p className="text-sm text-muted-foreground">Lengths show in {UNIT_LABEL[unit].toLowerCase()}. You can change this in Settings.</p>
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-sm font-semibold text-muted-foreground">Units</span>
+            <ChoiceGroup legend="Units" size="sm" value={unit} onChange={setUnit} choices={UNIT_CHOICES} className="w-40 [&>legend]:sr-only" />
+          </div>
         </Stack>
       ) : (
         <ArFallback availability={availability} busy={busy} onInstall={() => void install()} onRetry={recheck} onRuler={() => navigate('/ruler')} />
@@ -160,34 +180,35 @@ function ArFallback({
 }) {
   const { status, reason } = availability
   const needsApp = status === 'needs-install' || status === 'needs-update'
-  const heading = needsApp ? 'Measuring with the camera needs a free Google app (Google Play Services for AR)' : 'AR isn’t available on this phone'
-  const explanation = needsApp
-    ? status === 'needs-update'
-      ? 'The copy on your phone needs an update. It’s free and takes a minute in the Play Store.'
-      : 'It’s free and takes a minute to install from the Play Store.'
-    : status === 'unknown'
-      ? reason || 'We couldn’t check whether your phone can measure with the camera. Check your internet connection and try again.'
-      : reason || 'This phone can’t measure with the camera.'
+  const heading =
+    status === 'needs-install'
+      ? 'One free app needed'
+      : status === 'needs-update'
+        ? 'Update one free app'
+        : status === 'unknown'
+          ? 'Couldn’t check this phone'
+          : 'This phone can’t measure with the camera'
+  const line = needsApp ? 'Google Play Services for AR' : status === 'unknown' ? reason || 'Check your internet and try again.' : undefined
 
   return (
-    <section data-testid="ar-fallback" data-status={status} aria-labelledby="ar-fallback-heading" className="flex flex-col gap-4 rounded-lg border border-border bg-card p-4 sm:p-5">
-      <h2 id="ar-fallback-heading" className="text-lg font-semibold">
+    <section data-testid="ar-fallback" data-status={status} aria-labelledby="ar-fallback-heading" className="flex flex-col items-center gap-4 rounded-[20px] bg-card p-5 text-center text-card-foreground">
+      {needsApp ? <InstallArt className="w-32" /> : <NoCameraArt className="w-32" />}
+      <h2 id="ar-fallback-heading" className="text-xl font-bold tracking-tight">
         {heading}
       </h2>
-      <p className="text-muted-foreground">{explanation}</p>
-      {!needsApp && <p className="text-muted-foreground">The on-screen ruler works on every phone and is great for small things.</p>}
-      <div className="flex flex-wrap gap-2">
+      {line && <p className="text-sm text-muted-foreground">{line}</p>}
+      <div className="flex w-full flex-col gap-2">
         {needsApp && (
-          <Button icon={Download} loading={busy} onClick={onInstall}>
+          <Button icon={Download} fullWidth loading={busy} onClick={onInstall}>
             Install it
           </Button>
         )}
         {status === 'unknown' && (
-          <Button variant="outline" icon={RefreshCw} onClick={onRetry}>
+          <Button variant="tonal" icon={RefreshCw} fullWidth onClick={onRetry}>
             Try again
           </Button>
         )}
-        <Button variant={needsApp || status === 'unknown' ? 'outline' : 'primary'} icon={Ruler} onClick={onRuler}>
+        <Button variant={needsApp || status === 'unknown' ? 'tonal' : 'primary'} icon={Ruler} fullWidth onClick={onRuler}>
           Use the on-screen ruler
         </Button>
       </div>
