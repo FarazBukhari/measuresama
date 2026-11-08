@@ -1,10 +1,11 @@
-import { CreditCard, Maximize2, RotateCcw, Smartphone, X } from 'lucide-react'
+import { CreditCard, Maximize2, RotateCcw, X } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Alert, Badge, Button, Card, Grid, IconButton, KeyValueList, NumberInput, Row, SegmentedControl, Select, Stack, Stat, StatGrid } from '../../components/ui'
+import { CardArt } from '../../components/ModeArt'
+import { Alert, Badge, Button, CopyButton, Disclosure, Grid, IconButton, InfoButton, KeyValueList, NumberInput, Row, SegmentedControl, Select, Stack, TapeReadout } from '../../components/ui'
 import { useMediaQuery } from '../../hooks/useMediaQuery'
 import { usePersistentState } from '../../hooks/usePersistentState'
-import { readAndroidMetrics, readDeviceModel } from '../../native/screenMetrics'
-import { showTipsStore, unitStore } from '../../state/settings'
+import { readAndroidMetrics } from '../../native/screenMetrics'
+import { unitStore } from '../../state/settings'
 import { calibrationsStore, forgetCalibration, saveCalibration } from './calibration'
 import { CardCheck } from './CardCheck'
 import { enterFullscreen, exitFullscreen } from './fullscreen'
@@ -43,18 +44,15 @@ export default function ScreenRuler() {
   }, [])
 
   const [android, setAndroid] = useState<AndroidMetrics | null>(null)
-  const [model, setModel] = useState<string | null>(null)
   useEffect(() => {
     let live = true
     void readAndroidMetrics().then((m) => live && setAndroid(m))
-    void readDeviceModel().then((m) => live && setModel(m))
     return () => {
       live = false
     }
   }, [])
 
   const unit = unitStore.use()
-  const showTips = showTipsStore.use()
   const coarse = useMediaQuery('(pointer: coarse)') || /Android|Mobi/i.test(navigator.userAgent)
   const portrait = useMediaQuery('(orientation: portrait)')
   const apple = useMemo(() => (isAppleMobile(navigator.userAgent, navigator.maxTouchPoints) ? matchAppleDisplays(screen) : []), [screen])
@@ -104,59 +102,53 @@ export default function ScreenRuler() {
   const resolution = calibration.resolution ?? approxResolution(screen)
   const exactResolution = !!calibration.resolution
   const distanceMm = Math.abs(markers[1] - markers[0])
-  const deviceHint = calibration.device ?? model ?? undefined
   const inches = distanceMm / MM_PER_INCH
+
+  const mainValue = unit === 'in' ? formatInchFraction(inches) : formatMetric(distanceMm)
+  const otherValue = unit === 'in' ? formatMetric(distanceMm) : formatInchFraction(inches)
+  const copyValue = unit === 'in' ? inches.toFixed(2) : (distanceMm / 10).toFixed(2)
 
   return (
     <Stack>
       {!cardChecked && (
-        <Card
-          data-testid="card-prompt"
-          title="Check the size with a bank card"
-          description="Phones don’t always report their screen size correctly. Hold any bank card, ID card or driving licence against the screen once, and the ruler will be accurate to about a millimetre."
-        >
-          <Row>
-            <Button icon={CreditCard} onClick={openCardCheck}>
-              Start card check
-            </Button>
-          </Row>
-        </Card>
+        <div data-testid="card-prompt" className="flex flex-col gap-3 rounded-[20px] bg-card p-4 text-card-foreground">
+          <div className="flex items-center gap-3">
+            <CardArt className="size-12 shrink-0" />
+            <InfoButton
+              className="min-w-0 flex-1"
+              label="Why check?"
+              info="Phones don’t always report their screen size. One check makes the ruler accurate to about 1 mm."
+            >
+              <h2 className="text-base font-bold">Check the size with a bank card</h2>
+            </InfoButton>
+          </div>
+          <Button icon={CreditCard} onClick={openCardCheck} fullWidth>
+            Start card check
+          </Button>
+        </div>
       )}
 
-      <Card
-        title="Ruler"
-        description={
-          showTips ? 'Lay the object on the screen. Drag markers A and B to its ends, or tap the ruler to move the nearest marker.' : undefined
-        }
-        actions={
-          <Button size="sm" icon={Maximize2} onClick={openFull}>
-            Full-screen ruler
-          </Button>
-        }
-      >
-        <Stack>
-          <Ruler pxPerMm={pxPerMm} orientation="horizontal" markers={markers} onMarkersChange={setMarkers} className="h-32 rounded-md border border-border" />
-          <StatGrid cols={3}>
-            {unit === 'in' ? (
-              <Stat emphasis label="Distance A → B" value={formatInchFraction(inches)} hint={estimate ? 'Estimate until checked with a card' : `${inches.toFixed(2)} in`} copyValue={inches.toFixed(2)} />
-            ) : (
-              <Stat emphasis label="Distance A → B" value={formatMetric(distanceMm)} hint={estimate ? 'Estimate until checked with a card' : undefined} copyValue={(distanceMm / 10).toFixed(2)} />
-            )}
-            {unit === 'in' ? (
-              <Stat label="In centimetres" value={formatMetric(distanceMm)} />
-            ) : (
-              <Stat label="In inches" value={formatInchFraction(inches)} hint={`${inches.toFixed(2)} in`} />
-            )}
-            <Stat label="In millimetres" value={`${distanceMm.toFixed(1)} mm`} />
-          </StatGrid>
-        </Stack>
-      </Card>
+      {warnings.map((w) => (
+        <Alert key={w} tone="warning">
+          {w}
+        </Alert>
+      ))}
 
-      <Card
-        title="Screen scale"
-        description="How big this screen’s pixels really are. Saved on this device only."
-        actions={calibration.confirmed ? <Badge tone="success">Checked</Badge> : <Badge tone="warning">Estimate</Badge>}
-      >
+      <TapeReadout
+        live
+        value={mainValue}
+        secondary={`${otherValue} · ${distanceMm.toFixed(1)} mm`}
+        status={calibration.confirmed ? <Badge tone="tape-success">Checked</Badge> : <Badge tone="tape-warning">Estimate</Badge>}
+        actions={<CopyButton value={copyValue} label="Copy length" />}
+      />
+
+      <Ruler pxPerMm={pxPerMm} orientation="horizontal" markers={markers} onMarkersChange={setMarkers} className="h-36 rounded-[20px]" />
+
+      <Button variant="secondary" icon={Maximize2} onClick={openFull} fullWidth>
+        Full-screen ruler
+      </Button>
+
+      <Disclosure label="Screen details">
         <Stack>
           <KeyValueList
             copyable={false}
@@ -173,75 +165,60 @@ export default function ScreenRuler() {
                 ),
               },
               { label: 'Screen resolution', value: `${exactResolution ? '' : 'about '}${resolution[0]} × ${resolution[1]} pixels` },
-              { label: 'Pixel density', value: `${Math.round(ppi)} pixels per inch (ppi)` },
-              { label: 'Screen size (diagonal)', value: Number.isFinite(diagonal) ? `${diagonal.toFixed(1)} in · ${(diagonal * 2.54).toFixed(1)} cm` : '—' },
+              { label: 'Pixel density', value: <span>{`${Math.round(ppi)} pixels per inch (ppi)`}</span> },
+              { label: 'Screen size', value: Number.isFinite(diagonal) ? `${diagonal.toFixed(1)} in · ${(diagonal * 2.54).toFixed(1)} cm` : '—' },
             ]}
           />
 
           {apple.length > 1 && !savedHere && (
             <Select
               label="Which model is this?"
-              hint="Several models share this screen layout but not the same pixel size."
               value={String(appleIndex)}
               onChange={(v) => setAppleIndex(Number(v))}
               options={apple.map((d, i) => ({ value: String(i), label: `${d.name} (${d.diagonal}″)` }))}
             />
           )}
 
-          {warnings.map((w) => (
-            <Alert key={w} tone="warning" title="Please check the size again">
-              {w}
-            </Alert>
-          ))}
+          <p className="text-sm text-muted-foreground">
+            {cardChecked
+              ? 'Checked with a card. Accurate to about 1 mm.'
+              : calibration.confirmed
+                ? 'For the best accuracy, also check with a card.'
+                : 'Until you check with a card, this is a best guess.'}
+          </p>
 
-          {cardChecked ? (
-            <Alert tone="success" title="Checked with a card">
-              The ruler matches your screen. Measurements are accurate to about a millimetre.
-            </Alert>
-          ) : calibration.confirmed ? (
-            <Alert tone="success" title="Screen size checked">
-              For the most accurate ruler, also check it with a bank card.
-            </Alert>
-          ) : (
-            <Alert tone="warning" title="This ruler is an estimate">
-              {calibration.source === 'estimate'
-                ? 'Browsers don’t say how big a screen’s pixels are, so the ruler guesses until you check it with a card.'
-                : 'The size your phone reports is often slightly off. Check it once with a card to be sure.'}
-            </Alert>
+          {(cardChecked || savedHere) && (
+            <Row>
+              {cardChecked && (
+                <Button variant="tonal" icon={CreditCard} onClick={openCardCheck}>
+                  Check again with a card
+                </Button>
+              )}
+              {savedHere && (
+                <Button variant="ghost" icon={RotateCcw} onClick={() => forgetCalibration(key)}>
+                  Start over
+                </Button>
+              )}
+            </Row>
           )}
 
-          <Row>
-            {cardChecked && (
-              <Button variant="outline" icon={CreditCard} onClick={openCardCheck}>
-                Check again with a card
-              </Button>
-            )}
-            {savedHere && (
-              <Button variant="ghost" icon={RotateCcw} onClick={() => forgetCalibration(key)}>
-                Start over
-              </Button>
-            )}
-          </Row>
+          <h3 className="pt-2 text-base font-bold">No card? Use the screen size</h3>
+          <ScreenSizeCheck
+            key={key}
+            initialInches={Number.isFinite(diagonal) ? Math.round(diagonal * 10) / 10 : 6.1}
+            onSave={(inchesIn) => save({ pxPerMm: pxPerMmFromDiagonal(screen, inchesIn), source: 'screen-size', confirmed: true, specDiagonalIn: inchesIn })}
+            preview={(inchesIn) => pxPerMmFromDiagonal(screen, inchesIn)}
+            dpr={screen.dpr}
+          />
         </Stack>
-      </Card>
-
-      <Card title="No card nearby?" description="Enter your screen size from the box or spec sheet instead. A card check is more accurate.">
-        <ScreenSizeCheck
-          key={key}
-          initialInches={Number.isFinite(diagonal) ? Math.round(diagonal * 10) / 10 : 6.1}
-          deviceHint={deviceHint}
-          onSave={(inchesIn) => save({ pxPerMm: pxPerMmFromDiagonal(screen, inchesIn), source: 'screen-size', confirmed: true, specDiagonalIn: inchesIn })}
-          preview={(inchesIn) => pxPerMmFromDiagonal(screen, inchesIn)}
-          dpr={screen.dpr}
-        />
-      </Card>
+      </Disclosure>
 
       <FullscreenOverlay open={full} onClose={closeFull} label="Full-screen ruler">
         <div className="relative h-full w-full">
           <Ruler pxPerMm={pxPerMm} orientation={portrait ? 'vertical' : 'horizontal'} markers={fullMarkers} onMarkersChange={setFullMarkers} readout className="absolute inset-0" />
           <div data-ruler-ignore className="absolute bottom-4 left-1/2 flex -translate-x-1/2 flex-col items-center gap-2 safe-bottom">
-            {estimate && <p className="w-max rounded-md bg-warning-soft px-2 py-1 text-xs text-warning-soft-foreground">Estimate: not checked with a card</p>}
-            <IconButton icon={X} label="Close ruler" variant="outline" onClick={closeFull} className="rounded-full shadow-md" />
+            {estimate && <Badge tone="tape-warning">Estimate</Badge>}
+            <IconButton icon={X} label="Close ruler" variant="secondary" onClick={closeFull} className="bg-card shadow-lg" />
           </div>
         </div>
       </FullscreenOverlay>
@@ -262,13 +239,11 @@ export default function ScreenRuler() {
 
 function ScreenSizeCheck({
   initialInches,
-  deviceHint,
   onSave,
   preview,
   dpr,
 }: {
   initialInches: number
-  deviceHint?: string
   onSave: (inches: number) => void
   preview: (inches: number) => number
   dpr: number
@@ -288,7 +263,7 @@ function ScreenSizeCheck({
           allowNegative={false}
           suffix={unit === 'in' ? 'inches' : 'cm'}
           error={Number.isFinite(value) && !ok ? 'Enter the screen’s diagonal size, e.g. 6.1 inches.' : undefined}
-          hint={deviceHint ? `Search “${deviceHint} screen size” if you’re not sure.` : 'It’s on the box or the spec sheet, measured corner to corner.'}
+          hint="Corner to corner, from the box or spec sheet."
         />
         <SegmentedControl
           label="Screen size unit"
@@ -303,15 +278,10 @@ function ScreenSizeCheck({
           ]}
         />
       </Grid>
-      <p className="flex items-start gap-2 text-sm text-muted-foreground">
-        <Smartphone className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-        {ok ? `That makes ${Math.round(ppiFromPxPerMm(scale, dpr))} pixels per inch on this screen.` : 'Enter a size to see the pixel density.'} Keep the browser zoom at 100%.
-      </p>
-      <Row>
-        <Button disabled={!ok} onClick={() => onSave(inches)}>
-          Use this screen size
-        </Button>
-      </Row>
+      <p className="text-sm text-muted-foreground">{ok ? `That’s ${Math.round(ppiFromPxPerMm(scale, dpr))} pixels per inch.` : 'Enter a size to see the pixel density.'}</p>
+      <Button variant="tonal" disabled={!ok} onClick={() => onSave(inches)}>
+        Use this screen size
+      </Button>
     </Stack>
   )
 }

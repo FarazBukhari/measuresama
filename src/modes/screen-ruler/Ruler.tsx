@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react'
+import { TapeReadout } from '../../components/ui'
 import { cn } from '../../lib/cn'
 import { formatInchFraction, formatMetric, MM_PER_INCH, rulerTicks, type Tick } from './screen-ruler'
 
@@ -124,7 +125,7 @@ export function Ruler({ pxPerMm, orientation, markers, onMarkersChange, readout,
       {/* Band between the markers */}
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute bg-primary/10"
+        className="pointer-events-none absolute bg-primary/35"
         style={vertical ? { top: lo, height: hi - lo, left: 0, right: 0 } : { left: lo, width: hi - lo, top: 0, bottom: 0 }}
       />
       {length > 0 && (
@@ -142,7 +143,7 @@ export function Ruler({ pxPerMm, orientation, markers, onMarkersChange, readout,
             className="pointer-events-none absolute"
             style={vertical ? { top: pos, left: 0, right: 0, height: 0 } : { left: pos, top: 0, bottom: 0, width: 0 }}
           >
-            <div aria-hidden="true" className={cn('absolute bg-primary', vertical ? 'inset-x-0 -top-px h-0.5' : 'inset-y-0 -left-px w-0.5')} />
+            <div aria-hidden="true" className={cn('absolute bg-foreground', vertical ? 'inset-x-0 -top-px h-0.5' : 'inset-y-0 -left-px w-0.5')} />
             <div
               role="slider"
               data-marker={i}
@@ -155,7 +156,7 @@ export function Ruler({ pxPerMm, orientation, markers, onMarkersChange, readout,
               aria-valuetext={`${formatMetric(mm)} (${formatInchFraction(mm / MM_PER_INCH)})`}
               onKeyDown={onKeyDown(index)}
               className={cn(
-                'pointer-events-auto absolute grid size-11 cursor-grab place-items-center rounded-full bg-primary text-sm font-bold text-primary-foreground shadow-md active:cursor-grabbing',
+                'pointer-events-auto absolute grid size-11 cursor-grab place-items-center rounded-full bg-foreground text-sm font-bold text-background shadow-md active:cursor-grabbing',
                 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
               )}
               style={{
@@ -170,15 +171,13 @@ export function Ruler({ pxPerMm, orientation, markers, onMarkersChange, readout,
         )
       })}
       {readout && (
-        <div
-          aria-live="polite"
-          data-ruler-ignore
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-lg border border-border bg-card/95 px-3 py-2 text-center shadow-md"
-        >
-          <div className="text-2xl font-bold tabular-nums">{formatMetric(distanceMm)}</div>
-          <div className="text-sm tabular-nums text-muted-foreground">
-            {formatInchFraction(distanceMm / MM_PER_INCH)} · {(distanceMm / MM_PER_INCH).toFixed(2)} in
-          </div>
+        <div aria-live="polite" data-ruler-ignore className="absolute top-1/2 left-1/2 w-max max-w-[90%] -translate-x-1/2 -translate-y-1/2">
+          <TapeReadout
+            size="md"
+            value={formatMetric(distanceMm)}
+            secondary={`${formatInchFraction(distanceMm / MM_PER_INCH)} · ${(distanceMm / MM_PER_INCH).toFixed(2)} in`}
+            className="min-w-44 text-center [&_p]:text-center"
+          />
         </div>
       )}
     </div>
@@ -205,11 +204,11 @@ function Scale({ ticks, unit, vertical, cross, tickMax, side }: { ticks: Tick[];
           const text = i === 0 ? unit : t.label
           const off = edge + dir * (tickMax + 4)
           return vertical ? (
-            <text key={`l${t.pos}`} x={off} y={i === 0 ? t.pos + 12 : t.pos} dominantBaseline="middle" textAnchor={side === 'start' ? 'start' : 'end'} fontSize={12} stroke="none" className="tabular-nums">
+            <text key={`l${t.pos}`} x={off} y={i === 0 ? t.pos + 12 : t.pos} dominantBaseline="middle" textAnchor={side === 'start' ? 'start' : 'end'} fontSize={12} fontWeight={600} stroke="none" className="tabular-nums">
               {text}
             </text>
           ) : (
-            <text key={`l${t.pos}`} x={i === 0 ? t.pos + 3 : t.pos} y={off} dominantBaseline={side === 'start' ? 'hanging' : 'auto'} textAnchor={i === 0 ? 'start' : 'middle'} fontSize={12} stroke="none" className="tabular-nums">
+            <text key={`l${t.pos}`} x={i === 0 ? t.pos + 3 : t.pos} y={off} dominantBaseline={side === 'start' ? 'hanging' : 'auto'} textAnchor={i === 0 ? 'start' : 'middle'} fontSize={12} fontWeight={600} stroke="none" className="tabular-nums">
               {text}
             </text>
           )
