@@ -41,7 +41,7 @@ export function CopyButton({ value, children, label, size = 'sm', variant, class
       onClick={() => copy(value)}
       disabled={disabled || value === ''}
       className={cn(
-        'inline-flex shrink-0 items-center justify-center rounded-md text-muted-foreground transition-[background-color,color,transform] duration-150 hover:bg-muted hover:text-foreground active:scale-95 disabled:pointer-events-none disabled:opacity-40',
+        'inline-flex shrink-0 items-center justify-center rounded-full text-muted-foreground transition-[background-color,color,transform] duration-150 hover:bg-muted hover:text-foreground active:scale-95 disabled:pointer-events-none disabled:opacity-40',
         size === 'sm' ? 'size-9' : 'size-11',
         copied && 'text-success',
         className,

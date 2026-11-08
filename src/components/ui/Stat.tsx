@@ -17,13 +17,13 @@ export function Stat({ label, value, hint, emphasis, copyValue, className }: Sta
   return (
     <div
       className={cn(
-        'relative flex min-w-0 flex-col gap-1 rounded-lg border p-4',
-        emphasis ? 'border-primary/30 bg-primary-soft text-primary-soft-foreground' : 'border-border bg-subtle',
+        'relative flex min-w-0 flex-col gap-1 rounded-xl p-4',
+        emphasis ? 'bg-primary-soft text-primary-soft-foreground' : 'bg-subtle',
         className,
       )}
     >
-      <span className={cn('text-sm font-medium', copyValue && 'pr-9', emphasis ? 'text-primary-soft-foreground' : 'text-muted-foreground')}>{label}</span>
-      <span className={cn('break-words font-bold tabular-nums leading-tight', emphasis ? 'text-3xl' : 'text-2xl text-foreground')} aria-live="polite">
+      <span className={cn('text-sm font-semibold', copyValue && 'pr-9', emphasis ? 'text-primary-soft-foreground' : 'text-muted-foreground')}>{label}</span>
+      <span className={cn('break-words font-extrabold tabular-nums leading-tight tracking-tight', emphasis ? 'text-[28px]' : 'text-xl text-foreground')} aria-live="polite">
         {value}
       </span>
       {hint && <span className={cn('text-sm', emphasis ? 'text-primary-soft-foreground/90' : 'text-muted-foreground')}>{hint}</span>}

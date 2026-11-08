@@ -1,4 +1,3 @@
-import '@fontsource-variable/jetbrains-mono'
 import '@fontsource-variable/plus-jakarta-sans'
 import './styles/index.css'
 

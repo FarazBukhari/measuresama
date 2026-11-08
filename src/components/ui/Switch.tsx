@@ -16,7 +16,7 @@ export function Switch({ label, checked, onChange, description, disabled, classN
   return (
     <div className={cn('flex min-h-11 items-center justify-between gap-3', className)}>
       <div className="min-w-0">
-        <label htmlFor={id} className="text-sm font-medium">
+        <label htmlFor={id} className="text-base font-semibold">
           {label}
         </label>
         {description && <p className="text-sm text-muted-foreground">{description}</p>}
@@ -30,13 +30,13 @@ export function Switch({ label, checked, onChange, description, disabled, classN
         onClick={() => onChange(!checked)}
         className={cn(
           'relative inline-flex h-7 w-12 shrink-0 items-center rounded-full border-2 border-transparent transition-colors duration-150 disabled:opacity-50',
-          checked ? 'bg-primary' : 'bg-input/60',
+          checked ? 'bg-foreground' : 'bg-input',
         )}
       >
         <span
           aria-hidden="true"
           className={cn(
-            'inline-block size-6 rounded-full bg-white shadow-sm transition-transform duration-150',
+            'inline-block size-6 rounded-full bg-background transition-transform duration-150',
             checked ? 'translate-x-5' : 'translate-x-0',
           )}
         />
@@ -65,10 +65,10 @@ export function Checkbox({ label, checked, onChange, disabled, className, descri
         checked={checked}
         disabled={disabled}
         onChange={(e) => onChange(e.target.checked)}
-        className="mt-0.5 size-5 shrink-0 rounded accent-primary"
+        className="mt-0.5 size-5 shrink-0 rounded accent-foreground"
       />
       <div className="min-w-0">
-        <label htmlFor={id} className="text-sm font-medium leading-6">
+        <label htmlFor={id} className="text-sm font-semibold leading-6">
           {label}
         </label>
         {description && <p className="text-sm text-muted-foreground">{description}</p>}

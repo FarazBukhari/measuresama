@@ -23,7 +23,7 @@ export function Field({ label, htmlFor, hint, error, labelAside, className, chil
       {(label || labelAside) && (
         <div className="flex min-h-5 items-end justify-between gap-2">
           {label && (
-            <label htmlFor={htmlFor} className="text-sm font-medium text-foreground">
+            <label htmlFor={htmlFor} className="text-sm font-semibold text-foreground">
               {label}
             </label>
           )}
@@ -48,4 +48,4 @@ export function Field({ label, htmlFor, hint, error, labelAside, className, chil
 }
 
 export const controlBase =
-  'w-full min-w-0 rounded-md border border-input bg-card text-base text-foreground placeholder:text-muted-foreground/70 transition-[border-color,box-shadow] duration-150 focus-visible:border-ring focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/25 disabled:cursor-not-allowed disabled:opacity-60 aria-invalid:border-destructive aria-invalid:focus-visible:ring-destructive/25'
+  'w-full min-w-0 rounded-xl border border-input bg-card text-base text-foreground placeholder:text-muted-foreground transition-[border-color,box-shadow] duration-150 focus-visible:border-ring focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/25 disabled:cursor-not-allowed disabled:opacity-60 aria-invalid:border-destructive aria-invalid:focus-visible:ring-destructive/25'

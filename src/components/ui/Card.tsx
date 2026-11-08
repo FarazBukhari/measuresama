@@ -10,14 +10,14 @@ export interface CardProps extends Omit<HTMLAttributes<HTMLElement>, 'title'> {
   flush?: boolean
 }
 
-/** A bordered surface used to group related content. */
+/** A surface one tone step off the ground: no border, no shadow. */
 export function Card({ title, description, actions, flush, className, children, ...props }: CardProps) {
   return (
-    <section className={cn('rounded-lg border border-border bg-card text-card-foreground shadow-xs', className)} {...props}>
+    <section className={cn('rounded-[20px] bg-card text-card-foreground', className)} {...props}>
       {(title || actions) && (
         <header className={cn('flex flex-wrap items-start justify-between gap-2', flush ? 'px-4 pt-4 pb-3 sm:px-5' : 'px-4 pt-4 sm:px-5 sm:pt-5')}>
           <div className="min-w-0">
-            {title && <h2 className="text-base font-semibold leading-tight">{title}</h2>}
+            {title && <h2 className="text-base font-bold leading-tight">{title}</h2>}
             {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
           </div>
           {actions && <div className="flex shrink-0 items-center gap-1">{actions}</div>}

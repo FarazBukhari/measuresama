@@ -34,11 +34,11 @@ export function FileDrop({ onFiles, accept, multiple, label = 'Choose a file or 
         }}
         aria-describedby={hint ? `${id}-hint` : undefined}
         className={cn(
-          'flex w-full flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed px-4 py-8 text-center transition-colors duration-150',
-          dragging ? 'border-primary bg-primary-soft' : 'border-input bg-subtle hover:border-primary hover:bg-primary-soft/40',
+          'flex w-full flex-col items-center justify-center gap-2 rounded-[20px] border-2 border-dashed px-4 py-8 text-center transition-colors duration-150',
+          dragging ? 'border-foreground bg-primary-soft' : 'border-input bg-subtle hover:border-foreground hover:bg-muted',
         )}
       >
-        <Upload className="size-6 text-primary" aria-hidden="true" />
+        <Upload className="size-6 text-foreground" aria-hidden="true" />
         <span className="text-sm font-semibold">{label}</span>
         {hint && (
           <span id={`${id}-hint`} className="text-sm text-muted-foreground">

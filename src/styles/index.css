@@ -3,77 +3,81 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 /*
- * Design tokens for Measure Sama: tape-measure feel (deep indigo + amber), tuned for
- * WCAG AA contrast and paired with a matching dark theme. See design-system/measure-sama/MASTER.md.
+ * Design tokens for Measure Sama, "Tape" direction: one neutral ground, one ink, one accent
+ * (tape yellow). Tuned for WCAG AA in light and dark. See design-system/measure-sama/MASTER.md.
  * Components must use these semantic tokens, never raw hex values.
  */
 :root {
-  --background: #f5f7ff;
-  --foreground: #1e1b4b;
+  --background: #f4f4f1;
+  --foreground: #141414;
   --card: #ffffff;
-  --card-foreground: #1e1b4b;
-  --muted: #e9ecf8;
-  --muted-foreground: #475569;
-  --subtle: #f9faff;
-  --border: #d3d9f0;
-  --input: #8791b8;
-  --primary: #3730a3;
-  --primary-hover: #312e81;
-  --primary-foreground: #ffffff;
-  --primary-soft: #e0e7ff;
-  --primary-soft-foreground: #312e81;
-  --accent: #f59e0b;
-  --accent-soft: #fef3c7;
-  --accent-soft-foreground: #78350f;
-  --destructive: #dc2626;
+  --card-foreground: #141414;
+  --muted: #eaeae6;
+  --muted-foreground: #5e5e5a;
+  --subtle: #fafaf8;
+  --border: #e2e2dd;
+  --input: #8c8c86;
+  --primary: #ffc629;
+  --primary-hover: #f2b600;
+  --primary-foreground: #141414;
+  --primary-soft: #fff1c7;
+  --primary-soft-foreground: #5a4500;
+  --tape-ink-2: #4a3b00;
+  --paper: #ffffff;
+  --accent: var(--primary);
+  --accent-soft: var(--primary-soft);
+  --accent-soft-foreground: var(--primary-soft-foreground);
+  --destructive: #c42b1c;
   --destructive-foreground: #ffffff;
-  --destructive-soft: #fee2e2;
-  --destructive-soft-foreground: #991b1b;
-  --success: #15803d;
-  --success-soft: #dcfce7;
-  --success-soft-foreground: #166534;
-  --warning: #b45309;
-  --warning-soft: #fef3c7;
-  --warning-soft-foreground: #92400e;
-  --info-soft: #e0f2fe;
-  --info-soft-foreground: #075985;
-  --ring: #4f46e5;
-  --scrim: rgb(15 12 50 / 0.55);
-  --shadow-color: 240 40% 20%;
+  --destructive-soft: #fde8e5;
+  --destructive-soft-foreground: #8a1c12;
+  --success: #1e7a46;
+  --success-soft: #ddf5e5;
+  --success-soft-foreground: #0f4d2a;
+  --warning: #7a4a00;
+  --warning-soft: #fff1c7;
+  --warning-soft-foreground: #7a4a00;
+  --info-soft: #e6eef8;
+  --info-soft-foreground: #1d4e89;
+  --ring: #141414;
+  --scrim: rgb(0 0 0 / 0.45);
+  --shadow-color: 0 0% 0%;
   color-scheme: light;
 }
 
 .dark {
-  --background: #0b1020;
-  --foreground: #e8ebfa;
-  --card: #121936;
-  --card-foreground: #e8ebfa;
-  --muted: #1a2248;
-  --muted-foreground: #a9b3d9;
-  --subtle: #0e1429;
-  --border: #2a3466;
-  --input: #5c6aa5;
-  --primary: #a5b4fc;
-  --primary-hover: #c7d2fe;
-  --primary-foreground: #1e1b4b;
-  --primary-soft: #1f2a5e;
-  --primary-soft-foreground: #c7d2fe;
-  --accent: #fbbf24;
-  --accent-soft: #3a2a0a;
-  --accent-soft-foreground: #fcd34d;
-  --destructive: #f87171;
-  --destructive-foreground: #1f0a0a;
-  --destructive-soft: #3a1414;
-  --destructive-soft-foreground: #fca5a5;
-  --success: #4ade80;
-  --success-soft: #0f2e1b;
-  --success-soft-foreground: #86efac;
-  --warning: #fbbf24;
-  --warning-soft: #33260a;
-  --warning-soft-foreground: #fcd34d;
-  --info-soft: #0c2a3a;
-  --info-soft-foreground: #7dd3fc;
-  --ring: #a5b4fc;
+  --background: #0f0f0f;
+  --foreground: #f3f3f0;
+  --card: #1b1b1b;
+  --card-foreground: #f3f3f0;
+  --muted: #262626;
+  --muted-foreground: #a9a9a4;
+  --subtle: #151515;
+  --border: #2e2e2e;
+  --input: #6e6e69;
+  --primary: #ffc629;
+  --primary-hover: #ffd457;
+  --primary-foreground: #141414;
+  --primary-soft: #2e2408;
+  --primary-soft-foreground: #ffd666;
+  --tape-ink-2: #4a3b00;
+  --paper: #ffffff;
+  --accent: var(--primary);
+  --accent-soft: var(--primary-soft);
+  --accent-soft-foreground: var(--primary-soft-foreground);
+  --destructive: #ff7a6b;
+  --destructive-foreground: #0f0f0f;
+  --destructive-soft: #2e1411;
+  --destructive-soft-foreground: #ffb3a8;
+  --success: #5bd08a;
+  --success-soft: #10291a;
+  --success-soft-foreground: #7de0a3;
+  --warning: #ffd666;
+  --warning-soft: #2e2408;
+  --warning-soft-foreground: #ffd666;
+  --info-soft: #132131;
+  --info-soft-foreground: #9cc3f0;
+  --ring: #ffc629;
   --scrim: rgb(0 0 0 / 0.65);
   --shadow-color: 0 0% 0%;
   color-scheme: dark;
@@ -94,6 +98,8 @@
   --color-primary-foreground: var(--primary-foreground);
   --color-primary-soft: var(--primary-soft);
   --color-primary-soft-foreground: var(--primary-soft-foreground);
+  --color-tape-ink-2: var(--tape-ink-2);
+  --color-paper: var(--paper);
   --color-accent: var(--accent);
   --color-accent-soft: var(--accent-soft);
   --color-accent-soft-foreground: var(--accent-soft-foreground);
@@ -113,12 +119,13 @@
   --color-scrim: var(--scrim);
 
   --font-sans: 'Plus Jakarta Sans Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  --font-mono: 'JetBrains Mono Variable', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
 
   --radius-sm: 6px;
   --radius-md: 8px;
   --radius-lg: 12px;
   --radius-xl: 16px;
+  --radius-2xl: 20px;
 
   --shadow-xs: 0 1px 2px 0 hsl(var(--shadow-color) / 0.06);
   --shadow-sm: 0 1px 3px 0 hsl(var(--shadow-color) / 0.08), 0 1px 2px -1px hsl(var(--shadow-color) / 0.06);
@@ -158,6 +165,7 @@
   body {
     @apply bg-background text-foreground font-sans antialiased;
     font-size: 16px;
+    font-weight: 500;
     line-height: 1.5;
     min-height: 100dvh;
     font-feature-settings: 'cv11', 'ss01';
@@ -202,6 +210,15 @@
   input[type='number']::-webkit-inner-spin-button,
   input[type='number']::-webkit-outer-spin-button {
     opacity: 0.6;
+  }
+}
+
+/* Jakarta's tabular figures: also set the feature directly so the body's feature settings
+   (inherited) never drop it. */
+@layer utilities {
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'cv11', 'ss01', 'tnum';
   }
 }
 

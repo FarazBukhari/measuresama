@@ -56,7 +56,7 @@ export function Tabs<T extends string>({ tabs, value, onChange, label, children,
               onKeyDown={(e) => onKeyDown(e, i)}
               className={cn(
                 '-mb-px h-11 shrink-0 border-b-2 px-3 text-sm font-semibold transition-colors duration-150',
-                selected ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground',
+                selected ? 'border-foreground text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground',
               )}
             >
               {t.label}

@@ -40,14 +40,14 @@ export function SegmentedControl<T extends string>({ label, value, onChange, opt
   return (
     <div className={cn('flex flex-col gap-1.5', className)}>
       {label && (
-        <span id={labelId} className="text-sm font-medium">
+        <span id={labelId} className="text-sm font-semibold text-muted-foreground">
           {label}
         </span>
       )}
       <div
         role="radiogroup"
         aria-labelledby={label ? labelId : undefined}
-        className={cn('flex flex-wrap gap-1 rounded-lg bg-muted p-1', fullWidth ? 'w-full' : 'w-fit max-w-full')}
+        className={cn('flex flex-wrap gap-1 rounded-full bg-muted p-1', fullWidth ? 'w-full' : 'w-fit max-w-full')}
       >
         {opts.map((o, i) => {
           const selected = o.value === value
@@ -64,10 +64,10 @@ export function SegmentedControl<T extends string>({ label, value, onChange, opt
               onClick={() => onChange(o.value)}
               onKeyDown={(e) => onKeyDown(e, i)}
               className={cn(
-                'rounded-md px-3 font-medium transition-[background-color,color] duration-150',
-                size === 'sm' ? 'h-8 text-sm' : 'h-9 text-sm',
+                'rounded-full px-4 font-semibold transition-[background-color,color] duration-150',
+                size === 'sm' ? 'min-h-8 text-sm' : 'min-h-10 text-base',
                 fullWidth && 'flex-1',
-                selected ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
+                selected ? 'bg-card text-foreground' : 'text-muted-foreground hover:text-foreground',
               )}
             >
               {o.label}

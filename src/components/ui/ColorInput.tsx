@@ -4,7 +4,7 @@ import { cn } from '../../lib/cn'
 
 export interface ColorInputProps {
   label?: ReactNode
-  /** Hex color like #3730a3 */
+  /** Hex color like #rrggbb */
   value: string
   onChange: (value: string) => void
   hint?: ReactNode
@@ -24,7 +24,7 @@ export function ColorInput({ label, value, onChange, hint, error, className }: C
           aria-label={typeof label === 'string' ? `${label} picker` : 'Color picker'}
           value={safe}
           onChange={(e) => onChange(e.target.value)}
-          className="h-11 w-14 shrink-0 cursor-pointer rounded-md border border-input bg-card p-1"
+          className="h-11 w-14 shrink-0 cursor-pointer rounded-xl border border-input bg-card p-1"
         />
         <input
           id={id}
@@ -33,7 +33,7 @@ export function ColorInput({ label, value, onChange, hint, error, className }: C
           spellCheck={false}
           aria-invalid={error ? true : undefined}
           aria-describedby={error ? `${id}-error` : undefined}
-          className={cn(controlBase, 'h-11 px-3 font-mono')}
+          className={cn(controlBase, 'h-11 px-3 tabular-nums')}
         />
       </div>
     </Field>
