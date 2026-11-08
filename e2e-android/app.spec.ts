@@ -17,6 +17,7 @@ test('on-screen ruler reads the display density and back closes the full-screen 
   await go(app, '/ruler')
   await expect(app.getByRole('heading', { level: 1, name: 'On-screen ruler' })).toBeVisible()
   // The app-local ScreenMetrics plugin answers, so the scale comes from the display itself.
+  await app.getByText('Screen details', { exact: true }).click()
   const source = app.getByTestId('scale-source')
   await expect(source).toBeVisible()
   await expect(source).toHaveAttribute('data-source', 'android-display')

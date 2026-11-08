@@ -35,8 +35,9 @@ test('home lists the available modes and the ones coming soon', async ({ page })
   await expect(page.locator('[data-testid="mode-card"][data-status="available"]')).toHaveText([/Distance/, /On-screen ruler/])
   const soon = page.locator('[data-testid="mode-card"][data-status="coming-soon"]')
   await expect(soon).toHaveCount(7)
+  await expect(page.getByRole('heading', { name: 'Coming soon' })).toBeVisible()
   for (const name of ['Height', 'Angle', 'Path', 'Area & perimeter', 'Volume', 'Room plan + PDF', 'Photo measure']) {
-    await expect(soon.filter({ hasText: name }).getByText('Coming soon', { exact: true })).toBeVisible()
+    await expect(soon.filter({ hasText: name })).toBeVisible()
   }
   // Coming-soon cards are not links or buttons.
   await expect(soon.locator('a, button')).toHaveCount(0)
@@ -53,7 +54,7 @@ test('AR page falls back to the on-screen ruler in the browser', async ({ page }
   const fallback = page.getByTestId('ar-fallback')
   await expect(fallback).toBeVisible()
   await expect(fallback).toHaveAttribute('data-status', 'unsupported')
-  await expect(fallback.getByRole('heading', { name: 'AR isn’t available on this phone' })).toBeVisible()
+  await expect(fallback.getByRole('heading', { name: 'This phone can’t measure with the camera' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Start measuring' })).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Install it' })).toHaveCount(0)
   await fallback.getByRole('button', { name: 'Use the on-screen ruler' }).click()
@@ -131,7 +132,7 @@ test('full-screen ruler opens and Escape closes it', async ({ page }) => {
   await page.getByRole('button', { name: 'Full-screen ruler' }).click()
   const dialog = page.getByRole('dialog', { name: 'Full-screen ruler' })
   await expect(dialog).toBeVisible()
-  await expect(dialog.getByText('Estimate: not checked with a card')).toBeVisible()
+  await expect(dialog.getByText('Estimate', { exact: true })).toBeVisible()
   await expect(dialog.getByRole('slider', { name: 'Marker B' })).toBeVisible()
   await page.keyboard.press('Escape')
   await expect(dialog).toBeHidden()
@@ -180,6 +181,23 @@ test('bottom navigation and the not-found page', async ({ page }) => {
   await nav.getByRole('link', { name: 'Settings' }).click()
   await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible()
   await nav.getByRole('link', { name: 'Home' }).click()
+  await expect(page.getByRole('heading', { level: 1, name: 'Measure Sama' })).toBeVisible()
+  expect(errors).toEqual([])
+})
+
+test('Back goes to the previous screen, or to the parent when opened directly', async ({ page }) => {
+  const errors = collectErrors(page)
+  await seedHistory(page)
+  // Opened directly (no earlier screen in this app session): Back goes to the parent.
+  await page.goto('/history/seed-1')
+  await page.getByRole('button', { name: 'Back', exact: true }).click()
+  await expect(page).toHaveURL(/\/history$/)
+  await expect(page.getByRole('heading', { level: 1, name: 'History' })).toBeVisible()
+  // Reached from Home: Back returns to Home.
+  await page.goto('/')
+  await page.getByRole('link', { name: /On-screen ruler/ }).click()
+  await expect(page.getByRole('heading', { level: 1, name: 'On-screen ruler' })).toBeVisible()
+  await page.getByRole('button', { name: 'Back', exact: true }).click()
   await expect(page.getByRole('heading', { level: 1, name: 'Measure Sama' })).toBeVisible()
   expect(errors).toEqual([])
 })
