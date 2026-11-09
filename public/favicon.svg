@@ -1,11 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
-  <rect width="1024" height="1024" rx="224" fill="#3730A3"/>
-  <g id="art">
-    <circle cx="470" cy="470" r="290" fill="#FBBF24"/>
-    <circle cx="470" cy="470" r="120" fill="#3730A3"/>
-    <circle cx="470" cy="470" r="48" fill="#FBBF24"/>
-    <rect x="450" y="690" width="460" height="130" rx="14" fill="#FDE68A"/>
-    <rect x="896" y="670" width="40" height="170" rx="10" fill="#B45309"/>
-    <g stroke="#1E1B4B" stroke-width="12" stroke-linecap="round"><path d="M530 700v60"/><path d="M580 700v34"/><path d="M630 700v60"/><path d="M680 700v34"/><path d="M730 700v60"/><path d="M780 700v34"/><path d="M830 700v60"/><path d="M880 700v34"/></g>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40">
+  <rect width="40" height="40" rx="10" fill="#FFC629"/>
+  <g fill="#141414">
+    <path d="M9.25 0h2.5v15.75a1.25 1.25 0 0 1-2.5 0Z"/>
+    <path d="M14 0h2.5v8.75a1.25 1.25 0 0 1-2.5 0Z"/>
+    <path d="M18.75 0h2.5v15.75a1.25 1.25 0 0 1-2.5 0Z"/>
+    <path d="M23.5 0h2.5v8.75a1.25 1.25 0 0 1-2.5 0Z"/>
+    <path d="M28.25 0h2.5v15.75a1.25 1.25 0 0 1-2.5 0Z"/>
   </g>
 </svg>

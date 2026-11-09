@@ -1,11 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
-  <rect width="1024" height="1024" fill="#3730A3"/>
-  <g id="art">
-    <circle cx="470" cy="470" r="290" fill="#FBBF24"/>
-    <circle cx="470" cy="470" r="120" fill="#3730A3"/>
-    <circle cx="470" cy="470" r="48" fill="#FBBF24"/>
-    <rect x="450" y="690" width="460" height="130" rx="14" fill="#FDE68A"/>
-    <rect x="896" y="670" width="40" height="170" rx="10" fill="#B45309"/>
-    <g stroke="#1E1B4B" stroke-width="12" stroke-linecap="round"><path d="M530 700v60"/><path d="M580 700v34"/><path d="M630 700v60"/><path d="M680 700v34"/><path d="M730 700v60"/><path d="M780 700v34"/><path d="M830 700v60"/><path d="M880 700v34"/></g>
+  <!-- App icon: the LogoMark from src/components/layout/Logo.tsx (40 grid) drawn on a 1024 grid, full bleed.
+       The platforms round the corners themselves. scripts/render-icons.mjs reads the group with id "art". -->
+  <rect width="1024" height="1024" fill="#FFC629"/>
+  <g id="art" fill="#141414">
+    <path d="M236.8 0h64v403.2a32 32 0 0 1-64 0Z"/>
+    <path d="M358.4 0h64v224a32 32 0 0 1-64 0Z"/>
+    <path d="M480 0h64v403.2a32 32 0 0 1-64 0Z"/>
+    <path d="M601.6 0h64v224a32 32 0 0 1-64 0Z"/>
+    <path d="M723.2 0h64v403.2a32 32 0 0 1-64 0Z"/>
   </g>
 </svg>
