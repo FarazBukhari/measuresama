@@ -19,10 +19,14 @@ export function RoomPlanView({ item, unit, className }: { item: Pick<HistoryItem
   const height = Math.min(WIDTH, Math.max(used + 2 * PAD, 2 * PAD + 200))
   const plan = layoutRoomPlan(item, unit, { width: WIDTH, height, pad: PAD, fontSize: FONT })
   if (!plan) return null
+  // Side-wall lengths sit outside the walls and can run past the box: widen the view to fit them.
+  const half = (text: string) => (text.length * FONT * 0.6) / 2
+  const left = Math.min(0, ...plan.walls.map((w) => w.label.x - half(w.text) - 12))
+  const right = Math.max(plan.width, ...plan.walls.map((w) => w.label.x + half(w.text) + 12))
 
   return (
     <svg
-      viewBox={`0 0 ${plan.width} ${plan.height}`}
+      viewBox={`${left} 0 ${right - left} ${plan.height}`}
       role="img"
       aria-labelledby={titleId}
       data-testid="room-plan"
@@ -31,20 +35,20 @@ export function RoomPlanView({ item, unit, className }: { item: Pick<HistoryItem
       <title id={titleId}>Room plan</title>
       <polygon
         points={plan.corners.map((c) => `${c.x},${c.y}`).join(' ')}
-        className="fill-primary-soft stroke-primary"
+        className="fill-primary/35 stroke-foreground"
         strokeWidth={8}
         strokeLinejoin="round"
       />
       {plan.corners.map((c, i) => (
-        <circle key={`c${i}`} cx={c.x} cy={c.y} r={9} className="fill-primary" />
+        <circle key={`c${i}`} cx={c.x} cy={c.y} r={9} className="fill-foreground" />
       ))}
       {plan.walls.map((w) => (
         <g key={w.number}>
-          <circle cx={w.badge.x} cy={w.badge.y} r={FONT * 0.6} className="fill-card stroke-primary" strokeWidth={3} />
-          <text x={w.badge.x} y={w.badge.y} textAnchor="middle" dominantBaseline="central" fontSize={FONT * 0.7} fontWeight={700} className="fill-primary">
+          <circle cx={w.badge.x} cy={w.badge.y} r={FONT * 0.6} className="fill-primary stroke-foreground" strokeWidth={3} />
+          <text x={w.badge.x} y={w.badge.y} textAnchor="middle" dominantBaseline="central" fontSize={FONT * 0.7} fontWeight={800} className="fill-primary-foreground">
             {w.number}
           </text>
-          <text x={w.label.x} y={w.label.y} textAnchor="middle" dominantBaseline="central" fontSize={FONT} fontWeight={600} className="fill-current font-mono">
+          <text x={w.label.x} y={w.label.y} textAnchor="middle" dominantBaseline="central" fontSize={FONT} fontWeight={700} className="fill-current tabular-nums">
             {w.text}
           </text>
         </g>

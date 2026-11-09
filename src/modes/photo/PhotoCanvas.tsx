@@ -24,8 +24,9 @@ interface Drag {
 /** Lines shorter than this on screen (CSS px) are taps, not lines. */
 const MIN_LINE_CSS_PX = 10
 
-const CARD_COLOR = '#22d3ee'
-const LINE_COLOR = '#facc15'
+// Tape palette (design-system MASTER): white card outline, tape-yellow lines, red only for a bad card.
+const CARD_COLOR = '#ffffff'
+const LINE_COLOR = '#FFC629'
 const BAD_COLOR = '#f87171'
 
 interface Props {
@@ -174,7 +175,15 @@ export function PhotoCanvas({ photo, corners, onCorners, card, lines, onLines, l
       <svg className="pointer-events-none absolute inset-0 size-full" viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" aria-hidden="true">
         <polygon
           points={polygon}
-          fill={card ? 'rgba(34, 211, 238, 0.15)' : 'rgba(248, 113, 113, 0.12)'}
+          fill="none"
+          stroke="rgba(0,0,0,0.6)"
+          strokeWidth={5}
+          strokeLinejoin="round"
+          vectorEffect="non-scaling-stroke"
+        />
+        <polygon
+          points={polygon}
+          fill={card ? 'rgba(255, 255, 255, 0.18)' : 'rgba(248, 113, 113, 0.12)'}
           stroke={card ? CARD_COLOR : BAD_COLOR}
           strokeWidth={2}
           strokeDasharray={card ? undefined : '6 4'}
@@ -193,7 +202,7 @@ export function PhotoCanvas({ photo, corners, onCorners, card, lines, onLines, l
         <span
           key={i}
           data-testid="photo-line-length"
-          className="pointer-events-none absolute z-10 -translate-x-1/2 rounded-md bg-black/80 px-1.5 py-0.5 font-mono text-sm font-semibold whitespace-nowrap text-white tabular-nums"
+          className="pointer-events-none absolute z-10 -translate-x-1/2 rounded-full bg-primary px-2.5 py-0.5 text-sm font-extrabold whitespace-nowrap text-primary-foreground tabular-nums shadow-[0_0_0_1px_rgba(0,0,0,0.45)]"
           style={{ ...pct({ x: (l.a.x + l.b.x) / 2, y: (l.a.y + l.b.y) / 2 }), transform: 'translate(-50%, calc(-100% - 8px))' }}
         >
           {labels[i]}

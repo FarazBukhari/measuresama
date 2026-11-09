@@ -141,14 +141,18 @@ export async function composeAnnotatedJpeg(photo: DecodedPhoto, card: readonly P
     ctx.beginPath()
     card.forEach((p, i) => (i ? ctx.lineTo(p.x * s, p.y * s) : ctx.moveTo(p.x * s, p.y * s)))
     ctx.closePath()
-    ctx.fillStyle = 'rgba(34, 211, 238, 0.15)'
+    // Tape palette: white card outline on a dark edge, tape-yellow lines, lengths on yellow pills.
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.18)'
     ctx.fill()
-    ctx.strokeStyle = '#22d3ee'
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.6)'
+    ctx.lineWidth = lw * 2.5
+    ctx.stroke()
+    ctx.strokeStyle = '#ffffff'
     ctx.lineWidth = lw
     ctx.stroke()
 
     const font = Math.max(14, Math.round(long / 40))
-    ctx.font = `600 ${font}px system-ui, sans-serif`
+    ctx.font = `800 ${font}px system-ui, sans-serif`
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
     for (const line of lines) {
@@ -156,7 +160,7 @@ export async function composeAnnotatedJpeg(photo: DecodedPhoto, card: readonly P
       const b = { x: line.b.x * s, y: line.b.y * s }
       for (const [color, w] of [
         ['rgba(0, 0, 0, 0.7)', lw * 2.5],
-        ['#facc15', lw],
+        ['#FFC629', lw],
       ] as const) {
         ctx.beginPath()
         ctx.moveTo(a.x, a.y)
@@ -168,17 +172,20 @@ export async function composeAnnotatedJpeg(photo: DecodedPhoto, card: readonly P
       for (const p of [a, b]) {
         ctx.beginPath()
         ctx.arc(p.x, p.y, lw * 2, 0, Math.PI * 2)
-        ctx.fillStyle = '#facc15'
+        ctx.fillStyle = '#FFC629'
         ctx.fill()
       }
       const mx = (a.x + b.x) / 2
       const my = (a.y + b.y) / 2 - font
       const tw = ctx.measureText(line.label).width + font * 0.8
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.75)'
+      ctx.fillStyle = '#FFC629'
       ctx.beginPath()
-      ctx.roundRect(mx - tw / 2, my - font * 0.75, tw, font * 1.5, font * 0.4)
+      ctx.roundRect(mx - tw / 2, my - font * 0.75, tw, font * 1.5, font * 0.75)
       ctx.fill()
-      ctx.fillStyle = '#ffffff'
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.45)'
+      ctx.lineWidth = Math.max(1, lw / 2)
+      ctx.stroke()
+      ctx.fillStyle = '#141414'
       ctx.fillText(line.label, mx, my)
     }
     return await canvasToBlob(canvas, 'image/jpeg', 0.85)

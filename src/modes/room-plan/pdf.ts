@@ -76,17 +76,18 @@ export async function buildRoomPlanPdf(item: HistoryItem, unit: LengthUnit): Pro
     const oy = PLAN_BOX.top
     const pts = c.plan.corners.map((p) => ({ x: ox + p.x, y: oy + p.y }))
     const deltas = pts.slice(1).map((p, i) => [p.x - pts[i].x, p.y - pts[i].y])
-    doc.setDrawColor(55, 48, 163)
-    doc.setFillColor(238, 240, 255)
+    // Tape palette: ink outline on a pale tape-yellow floor; yellow wall badges with ink numbers.
+    doc.setDrawColor(20, 20, 20)
+    doc.setFillColor(255, 238, 191)
     doc.setLineWidth(0.7)
     doc.lines(deltas, pts[0].x, pts[0].y, [1, 1], 'FD', true)
     doc.setFontSize(LABEL_PT)
     for (const w of c.plan.walls) {
-      doc.setFillColor(255, 255, 255)
+      doc.setFillColor(255, 198, 41)
       doc.setLineWidth(0.3)
       doc.circle(ox + w.badge.x, oy + w.badge.y, 2.4, 'FD')
       doc.setFont('helvetica', 'bold')
-      doc.setTextColor(55, 48, 163)
+      doc.setTextColor(20, 20, 20)
       doc.text(String(w.number), ox + w.badge.x, oy + w.badge.y, { align: 'center', baseline: 'middle' })
       doc.setFont('helvetica', 'normal')
       doc.setTextColor(0)

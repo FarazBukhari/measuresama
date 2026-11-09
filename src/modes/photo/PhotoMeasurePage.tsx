@@ -1,8 +1,10 @@
 import { Capacitor } from '@capacitor/core'
-import { ArrowLeftRight, Camera, CreditCard, Eraser, Image as ImageIcon, ImagePlus, Package, Plus, Save, TriangleAlert, Undo2 } from 'lucide-react'
+import { ArrowLeftRight, Camera, Eraser, Image as ImageIcon, ImagePlus, Plus, Save, TriangleAlert, Undo2 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react'
 import { useNavigate } from 'react-router'
-import { Alert, Button, IconButton } from '../../components/ui'
+import { ModeArt } from '../../components/ModeArt'
+import { PageHeader } from '../../components/layout/PageHeader'
+import { Alert, Button, Card, IconButton } from '../../components/ui'
 import { useDocumentTitle } from '../../hooks/useDocumentTitle'
 import { saveAppPhoto } from '../../lib/download'
 import type { Point2D } from '../../lib/geometry'
@@ -136,27 +138,25 @@ export default function PhotoMeasurePage() {
         : 'Drag corners onto the card'
 
   return (
-    <div className="flex flex-col gap-5">
-      <h1 className="text-3xl font-bold tracking-tight">Photo measure</h1>
+    <div className="flex flex-col">
+      <PageHeader back="/" title="Photo measure" />
 
       <input ref={takeRef} type="file" accept="image/*" capture="environment" className="hidden" data-testid="photo-input-take" onChange={onFile} />
       <input ref={chooseRef} type="file" accept="image/*" className="hidden" data-testid="photo-input-choose" onChange={onFile} />
 
       {!photo ? (
-        <div className="flex flex-col gap-5">
-          <div className="flex items-center gap-3 text-muted-foreground">
-            <span className="flex items-center gap-1.5" aria-hidden="true">
-              <CreditCard className="size-7" />
-              <Plus className="size-4" />
-              <Package className="size-7" />
-            </span>
-            <p>Card + object, flat on a table</p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button size="lg" icon={Camera} loading={opening} onClick={() => takeRef.current?.click()}>
+        <div className="flex flex-col gap-4">
+          <Card>
+            <div className="flex flex-col items-center gap-3 text-center">
+              <ModeArt id="photo" className="size-32" />
+              <p className="font-semibold">Card + object, flat on a table</p>
+            </div>
+          </Card>
+          <div className="flex flex-col gap-2">
+            <Button size="lg" icon={Camera} fullWidth loading={opening} onClick={() => takeRef.current?.click()}>
               Take photo
             </Button>
-            <Button size="lg" variant="outline" icon={ImageIcon} disabled={opening} onClick={() => chooseRef.current?.click()}>
+            <Button size="lg" variant="tonal" icon={ImageIcon} fullWidth disabled={opening} onClick={() => chooseRef.current?.click()}>
               Choose photo
             </Button>
           </div>

@@ -27,7 +27,7 @@ export function Magnifier({ source, point, scale }: { source: HTMLCanvasElement;
     if (!ctx) return
     // Image px shown across the loupe: what MAGNIFIER_SIZE / ZOOM CSS px cover on screen.
     const span = MAGNIFIER_SIZE / ZOOM / scale
-    ctx.fillStyle = '#111827'
+    ctx.fillStyle = '#0F0F0F'
     ctx.fillRect(0, 0, px, px)
     ctx.imageSmoothingEnabled = true
     ctx.drawImage(source, point.x - span / 2, point.y - span / 2, span, span, 0, 0, px, px)
@@ -36,7 +36,7 @@ export function Magnifier({ source, point, scale }: { source: HTMLCanvasElement;
     ctx.lineCap = 'round'
     for (const [color, w] of [
       ['rgba(0, 0, 0, 0.8)', 4 * dpr],
-      ['#facc15', 1.5 * dpr],
+      ['#FFC629', 1.5 * dpr],
     ] as const) {
       ctx.strokeStyle = color
       ctx.lineWidth = w
