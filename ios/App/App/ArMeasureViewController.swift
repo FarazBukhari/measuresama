@@ -4,6 +4,8 @@
 // Centre-reticle aiming, smoothed aim point, plane lock with a haptic tick,
 // then points measured on the infinite locked plane. Lines and labels are a
 // 2D overlay re-projected every frame, so they stay crisp at any distance.
+// Look (design-system MASTER, "AR screen"): tape yellow and ink only, white edges, a 60% black
+// scrim behind text, and hints of four words or fewer.
 
 import Foundation
 import UIKit
@@ -33,10 +35,12 @@ final class ArMeasureViewController: UIViewController, ARSessionDelegate {
     private let coachingOverlay = ARCoachingOverlayView()
     /// Everything in here is drawn into the saved photo.
     private let overlayView = UIView()
+    private let lineEdgeLayer = CAShapeLayer()
     private let lineLayer = CAShapeLayer()
     private let dotsLayer = CAShapeLayer()
     private let distanceLabel = PaddedLabel()
     private let reticle = UIView()
+    private let reticleDot = UIView()
     private let hintLabel = PaddedLabel()
 
     private lazy var closeButton = makeButton(
@@ -64,8 +68,14 @@ final class ArMeasureViewController: UIViewController, ARSessionDelegate {
     private var sessionStarted = false
     private var isSaving = false
     private var finished = false
+    /// The circle is on something a point can go on (drives the + button's look).
+    private var addReady: Bool?
+    /// A refused tap shows its own hint for a moment.
+    private var hintOverrideUntil: Date?
 
-    private static let brandIndigo = UIColor(red: 0x37 / 255.0, green: 0x30 / 255.0, blue: 0xA3 / 255.0, alpha: 1)
+    private static let tape = UIColor(red: 0xFF / 255.0, green: 0xC6 / 255.0, blue: 0x29 / 255.0, alpha: 1)
+    private static let ink = UIColor(red: 0x14 / 255.0, green: 0x14 / 255.0, blue: 0x14 / 255.0, alpha: 1)
+    private static let scrim = UIColor.black.withAlphaComponent(0.6)
     private static let lowLightLumens: CGFloat = 200
 
     init(unit: String, completion: @escaping (ArMeasureOutcome) -> Void) {
@@ -91,7 +101,7 @@ final class ArMeasureViewController: UIViewController, ARSessionDelegate {
         view.backgroundColor = .black
         setUpViews()
         updateButtons()
-        hintLabel.text = "Move your phone slowly to find a flat surface."
+        hintLabel.text = "Move phone slowly"
     }
 
     override func viewDidAppear(_ animated: Bool) {
@@ -134,9 +144,8 @@ final class ArMeasureViewController: UIViewController, ARSessionDelegate {
         overlayView.backgroundColor = .clear
         view.addSubview(overlayView)
 
-        for layer in [lineLayer, dotsLayer] {
-            layer.strokeColor = UIColor.white.cgColor
-            layer.lineWidth = 3
+        // The line is tape yellow on a white edge; dots are yellow with a white ring.
+        for layer in [lineEdgeLayer, lineLayer, dotsLayer] {
             layer.lineCap = .round
             layer.shadowColor = UIColor.black.cgColor
             layer.shadowOpacity = 0.6
@@ -144,32 +153,43 @@ final class ArMeasureViewController: UIViewController, ARSessionDelegate {
             layer.shadowOffset = .zero
             overlayView.layer.addSublayer(layer)
         }
+        lineEdgeLayer.strokeColor = UIColor.white.cgColor
+        lineEdgeLayer.lineWidth = 5
+        lineEdgeLayer.fillColor = UIColor.clear.cgColor
+        lineLayer.strokeColor = Self.tape.cgColor
+        lineLayer.lineWidth = 3
         lineLayer.fillColor = UIColor.clear.cgColor
-        dotsLayer.fillColor = UIColor.white.cgColor
-        dotsLayer.strokeColor = Self.brandIndigo.cgColor
+        lineLayer.shadowOpacity = 0
+        dotsLayer.fillColor = Self.tape.cgColor
+        dotsLayer.strokeColor = UIColor.white.cgColor
         dotsLayer.lineWidth = 2
 
-        distanceLabel.font = .monospacedDigitSystemFont(ofSize: 20, weight: .semibold)
-        distanceLabel.textColor = .white
-        distanceLabel.backgroundColor = UIColor.black.withAlphaComponent(0.75)
-        distanceLabel.layer.cornerRadius = 10
+        // The length sits on a small tape pill: ink on yellow reads over any camera picture.
+        distanceLabel.font = .monospacedDigitSystemFont(ofSize: 22, weight: .heavy)
+        distanceLabel.textColor = Self.ink
+        distanceLabel.backgroundColor = Self.tape
+        distanceLabel.layer.borderColor = UIColor.black.withAlphaComponent(0.4).cgColor
+        distanceLabel.layer.borderWidth = 1
         distanceLabel.layer.masksToBounds = true
         distanceLabel.textAlignment = .center
         distanceLabel.isHidden = true
         distanceLabel.isAccessibilityElement = true
         overlayView.addSubview(distanceLabel)
 
-        // Centre reticle: ring + dot. Not part of the saved photo.
+        // Centre reticle: white ring + dot (the dot turns tape yellow on a surface). Not in the saved photo.
         reticle.translatesAutoresizingMaskIntoConstraints = false
         reticle.isUserInteractionEnabled = false
         reticle.isAccessibilityElement = false
-        reticle.layer.cornerRadius = 16
+        reticle.layer.cornerRadius = 24
         reticle.layer.borderWidth = 2
         reticle.layer.borderColor = UIColor.white.withAlphaComponent(0.6).cgColor
-        let reticleDot = UIView()
+        reticle.layer.shadowColor = UIColor.black.cgColor
+        reticle.layer.shadowOpacity = 0.5
+        reticle.layer.shadowRadius = 2
+        reticle.layer.shadowOffset = .zero
         reticleDot.translatesAutoresizingMaskIntoConstraints = false
         reticleDot.backgroundColor = .white
-        reticleDot.layer.cornerRadius = 3
+        reticleDot.layer.cornerRadius = 4
         reticle.addSubview(reticleDot)
         view.addSubview(reticle)
 
@@ -181,11 +201,13 @@ final class ArMeasureViewController: UIViewController, ARSessionDelegate {
 
         // Hints and controls sit above the coaching overlay so Close always works.
         hintLabel.translatesAutoresizingMaskIntoConstraints = false
-        hintLabel.font = .preferredFont(forTextStyle: .callout)
+        hintLabel.font = UIFontMetrics(forTextStyle: .subheadline)
+            .scaledFont(for: .systemFont(ofSize: 15, weight: .semibold))
         hintLabel.adjustsFontForContentSizeCategory = true
         hintLabel.textColor = .white
-        hintLabel.backgroundColor = UIColor.black.withAlphaComponent(0.7)
-        hintLabel.layer.cornerRadius = 12
+        hintLabel.backgroundColor = Self.scrim
+        hintLabel.insets = UIEdgeInsets(top: 9, left: 16, bottom: 9, right: 16)
+        hintLabel.layer.cornerRadius = 19
         hintLabel.layer.masksToBounds = true
         hintLabel.numberOfLines = 0
         hintLabel.textAlignment = .center
@@ -226,12 +248,12 @@ final class ArMeasureViewController: UIViewController, ARSessionDelegate {
 
             reticle.centerXAnchor.constraint(equalTo: arView.centerXAnchor),
             reticle.centerYAnchor.constraint(equalTo: arView.centerYAnchor),
-            reticle.widthAnchor.constraint(equalToConstant: 32),
-            reticle.heightAnchor.constraint(equalToConstant: 32),
+            reticle.widthAnchor.constraint(equalToConstant: 48),
+            reticle.heightAnchor.constraint(equalToConstant: 48),
             reticleDot.centerXAnchor.constraint(equalTo: reticle.centerXAnchor),
             reticleDot.centerYAnchor.constraint(equalTo: reticle.centerYAnchor),
-            reticleDot.widthAnchor.constraint(equalToConstant: 6),
-            reticleDot.heightAnchor.constraint(equalToConstant: 6),
+            reticleDot.widthAnchor.constraint(equalToConstant: 8),
+            reticleDot.heightAnchor.constraint(equalToConstant: 8),
 
             closeButton.topAnchor.constraint(equalTo: safe.topAnchor, constant: 8),
             closeButton.leadingAnchor.constraint(equalTo: safe.leadingAnchor, constant: 12),
@@ -255,8 +277,9 @@ final class ArMeasureViewController: UIViewController, ARSessionDelegate {
         config.imagePlacement = .top
         config.imagePadding = 4
         config.cornerStyle = .large
-        config.baseForegroundColor = .white
-        config.baseBackgroundColor = prominent ? Self.brandIndigo : UIColor.black.withAlphaComponent(0.65)
+        // Prominent (+, Save): ink on tape yellow. Others: white on the scrim.
+        config.baseForegroundColor = prominent ? Self.ink : .white
+        config.baseBackgroundColor = prominent ? Self.tape : Self.scrim
         config.contentInsets = NSDirectionalEdgeInsets(top: 8, leading: 10, bottom: 8, trailing: 10)
         config.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { incoming in
             var outgoing = incoming
@@ -333,9 +356,10 @@ final class ArMeasureViewController: UIViewController, ARSessionDelegate {
                 raw = MeasureMath.position(of: hit.worldTransform)
                 if let planeAnchor = hit.anchor as? ARPlaneAnchor {
                     if planeAnchor.identifier != candidatePlaneID {
-                        // Plane lock: tick so people feel the surface "grab".
+                        // Plane lock: tick and pop so people feel and see the surface "grab".
                         haptics.impactOccurred()
                         haptics.prepare()
+                        popReticle()
                     }
                     candidatePlaneID = planeAnchor.identifier
                     candidatePlane = MeasurePlane(transform: planeAnchor.transform)
@@ -374,11 +398,13 @@ final class ArMeasureViewController: UIViewController, ARSessionDelegate {
         CATransaction.setDisableActions(true)
         defer { CATransaction.commit() }
 
-        reticle.layer.borderColor = (aimPoint == nil
-            ? UIColor.white.withAlphaComponent(0.4)
-            : (candidatePlaneID != nil || lockedPlane != nil ? Self.brandIndigo : UIColor.white)).cgColor
+        let onSurface = aimPoint != nil && (candidatePlaneID != nil || lockedPlane != nil)
+        reticle.layer.borderColor = (aimPoint == nil ? UIColor.white.withAlphaComponent(0.4) : UIColor.white).cgColor
+        reticle.layer.borderWidth = onSurface ? 3 : 2
+        reticleDot.backgroundColor = onSurface ? Self.tape : .white
 
         guard trackingNormal else {
+            lineEdgeLayer.path = nil
             lineLayer.path = nil
             dotsLayer.path = nil
             distanceLabel.isHidden = true
@@ -400,12 +426,13 @@ final class ArMeasureViewController: UIViewController, ARSessionDelegate {
         let dots = UIBezierPath()
         for (index, point) in screen.enumerated() where index < placed.count {
             if let p = point {
-                dots.append(UIBezierPath(ovalIn: CGRect(x: p.x - 6, y: p.y - 6, width: 12, height: 12)))
+                dots.append(UIBezierPath(ovalIn: CGRect(x: p.x - 7, y: p.y - 7, width: 14, height: 14)))
             }
         }
         dotsLayer.path = dots.cgPath
 
         guard ends.count == 2, let a = screen[0], let b = screen[1] else {
+            lineEdgeLayer.path = nil
             lineLayer.path = nil
             distanceLabel.isHidden = true
             return
@@ -414,7 +441,9 @@ final class ArMeasureViewController: UIViewController, ARSessionDelegate {
         let line = UIBezierPath()
         line.move(to: a)
         line.addLine(to: b)
+        lineEdgeLayer.path = line.cgPath
         lineLayer.path = line.cgPath
+        lineEdgeLayer.lineDashPattern = isLive ? [8, 6] : nil
         lineLayer.lineDashPattern = isLive ? [8, 6] : nil
 
         let metres = Double(MeasureMath.distance(ends[0], ends[1]))
@@ -423,6 +452,7 @@ final class ArMeasureViewController: UIViewController, ARSessionDelegate {
             distanceLabel.text = text
             distanceLabel.accessibilityLabel = "Distance \(text)"
             distanceLabel.sizeToFit()
+            distanceLabel.layer.cornerRadius = distanceLabel.bounds.height / 2
         }
         distanceLabel.center = CGPoint(x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 - 28)
         distanceLabel.isHidden = false
@@ -431,35 +461,37 @@ final class ArMeasureViewController: UIViewController, ARSessionDelegate {
     // MARK: - Hints
 
     private func updateHint(_ frame: ARFrame) {
+        if let until = hintOverrideUntil, Date() < until { return }
+        hintOverrideUntil = nil
         let text: String
         switch frame.camera.trackingState {
         case .notAvailable:
-            text = "Getting the camera ready. Hold your phone steady."
+            text = "Hold phone steady"
         case .limited(let reason):
             switch reason {
             case .initializing:
-                text = "Getting ready. Move your phone slowly from side to side."
+                text = "Move phone slowly"
             case .excessiveMotion:
-                text = "Slow down. Move your phone more gently."
+                text = "Slow down"
             case .insufficientFeatures:
-                text = "Point at something with more detail, or turn on more light."
+                text = "Need more detail"
             case .relocalizing:
-                text = "Finding your place again. Point back where you started."
+                text = "Point back to start"
             @unknown default:
-                text = "Hold on, the camera is still getting ready."
+                text = "Move phone slowly"
             }
         case .normal:
             if let light = frame.lightEstimate, light.ambientIntensity < Self.lowLightLumens {
-                text = "It's quite dark. More light makes measuring more accurate."
+                text = "Too dark"
             } else if aimPoint == nil {
-                text = "Aim the dot at a flat surface."
+                text = "Aim at a surface"
             } else if aimDistanceFromCamera > MeasureMath.farWarningDistance {
-                text = "That's more than 5 m away, so the result may be less accurate. Move closer if you can."
+                text = unit == "in" ? "Less accurate past 16 ft" : "Less accurate past 5 m"
             } else {
                 switch pointAnchors.count {
-                case 0: text = "Aim the dot at the start and tap Add point."
-                case 1: text = "Now aim at the end and tap Add point."
-                default: text = "Tap Save to keep this measurement."
+                case 0: text = "Tap + to start"
+                case 1: text = "Tap + at the end"
+                default: text = "Done? Tap Save"
                 }
             }
         }
@@ -474,7 +506,9 @@ final class ArMeasureViewController: UIViewController, ARSessionDelegate {
         let count = pointAnchors.count
         setEnabled(undoButton, count > 0 && !isSaving)
         setEnabled(clearButton, count > 0 && !isSaving)
-        setEnabled(addButton, count < 2 && aimPoint != nil && trackingNormal && !isSaving)
+        // + stays tappable without a surface, so a tap can be explained (rejectAdd).
+        setEnabled(addButton, count < 2 && !isSaving)
+        styleAdd(ready: aimPoint != nil && trackingNormal)
         setEnabled(saveButton, count == 2 && !isSaving)
         setEnabled(closeButton, !isSaving)
     }
@@ -486,12 +520,53 @@ final class ArMeasureViewController: UIViewController, ARSessionDelegate {
         }
     }
 
+    /// + is tape yellow with an ink + when a point can go down, see-through grey with a faint + until then.
+    private func styleAdd(ready: Bool) {
+        guard addReady != ready, var config = addButton.configuration else { return }
+        addReady = ready
+        config.baseBackgroundColor = ready ? Self.tape : UIColor.white.withAlphaComponent(0.4)
+        config.baseForegroundColor = ready ? Self.ink : Self.ink.withAlphaComponent(0.4)
+        addButton.configuration = config
+    }
+
+    /// A tap on + with nothing to put a point on: shake it, tick, and say what to do for a moment.
+    private func rejectAdd() {
+        if !UIAccessibility.isReduceMotionEnabled {
+            let shake = CAKeyframeAnimation(keyPath: "transform.translation.x")
+            shake.values = [0, -4, 4, -4, 4, -4, 4, 0]
+            shake.duration = 0.25
+            shake.timingFunction = CAMediaTimingFunction(name: .easeOut)
+            addButton.layer.add(shake, forKey: "shake")
+        }
+        haptics.impactOccurred()
+        haptics.prepare()
+        hintLabel.text = "Aim at a surface"
+        hintOverrideUntil = Date().addingTimeInterval(1.5)
+        UIAccessibility.post(notification: .announcement, argument: "Aim at a surface")
+    }
+
+    /// Short scale pop (1.0 -> 1.15 -> 1.0, 200 ms) when the circle finds a surface.
+    private func popReticle() {
+        guard !UIAccessibility.isReduceMotionEnabled else { return }
+        UIView.animate(withDuration: 0.1, delay: 0, options: [.curveEaseOut]) {
+            self.reticle.transform = CGAffineTransform(scaleX: 1.15, y: 1.15)
+        } completion: { _ in
+            UIView.animate(withDuration: 0.1, delay: 0, options: [.curveEaseOut]) {
+                self.reticle.transform = .identity
+            }
+        }
+    }
+
     @objc private func closeTapped() {
         finish(.cancelled(reason: "user", message: nil))
     }
 
     @objc private func addTapped() {
-        guard pointAnchors.count < 2, trackingNormal, let point = aimPoint else { return }
+        guard pointAnchors.count < 2, !isSaving else { return }
+        guard trackingNormal, let point = aimPoint else {
+            rejectAdd()
+            return
+        }
         let anchor = ARAnchor(name: "measure-point", transform: MeasureMath.translation(point))
         arView.session.add(anchor: anchor)
         pointAnchors.append(anchor)

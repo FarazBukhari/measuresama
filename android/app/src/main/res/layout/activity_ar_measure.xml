@@ -2,6 +2,8 @@
 <!--
     AR measuring screen: camera (GLSurfaceView), 2D overlay (reticle, points, lines, labels),
     a top bar (Close, hint; mode chip, warning, Clear) and a bottom bar (Undo, Add point, Save).
+    Colours (design-system MASTER, "AR screen"): tape #FFC629, ink #141414, white, and a 60% black
+    scrim behind any text over the camera.
     Every touch target is at least 48dp. Bar paddings for system bars are added in code.
     The root FrameLayout stays (not <merge>): it carries keepScreenOn and the insets listener.
 -->
@@ -45,38 +47,43 @@
         android:paddingTop="12dp"
         android:paddingEnd="12dp">
 
-        <LinearLayout
+        <!-- Close on the left, the hint chip centred on the screen (equal side margins keep it centred). -->
+        <FrameLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="center_vertical"
-            android:orientation="horizontal">
+            android:layout_height="wrap_content">
 
             <ImageButton
                 android:id="@+id/ar_close"
-                android:layout_width="56dp"
-                android:layout_height="56dp"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_gravity="start|center_vertical"
                 android:background="@drawable/bg_ar_round"
                 android:contentDescription="@string/ar_close"
                 android:src="@drawable/ic_ar_close" />
 
             <TextView
                 android:id="@+id/ar_hint"
-                android:layout_width="0dp"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="12dp"
-                android:layout_weight="1"
+                android:layout_gravity="center"
+                android:layout_marginStart="60dp"
+                android:layout_marginEnd="60dp"
                 android:accessibilityLiveRegion="polite"
                 android:background="@drawable/bg_ar_hint"
-                android:gravity="center_vertical"
-                android:minHeight="56dp"
+                android:fontFamily="sans-serif"
+                android:gravity="center"
+                android:maxLines="2"
+                android:minHeight="40dp"
                 android:paddingStart="16dp"
-                android:paddingTop="10dp"
+                android:paddingTop="8dp"
                 android:paddingEnd="16dp"
-                android:paddingBottom="10dp"
+                android:paddingBottom="8dp"
                 android:text="@string/ar_hint_getting_ready"
                 android:textColor="#FFFFFF"
-                android:textSize="16sp" />
-        </LinearLayout>
+                android:textFontWeight="600"
+                android:textSize="15sp"
+                tools:targetApi="p" />
+        </FrameLayout>
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -115,7 +122,7 @@
                 android:paddingTop="8dp"
                 android:paddingEnd="14dp"
                 android:paddingBottom="8dp"
-                android:textColor="#1E1B4B"
+                android:textColor="#141414"
                 android:textSize="15sp"
                 android:textStyle="bold"
                 android:visibility="invisible"
@@ -163,8 +170,8 @@
 
         <ImageButton
             android:id="@+id/ar_add"
-            android:layout_width="80dp"
-            android:layout_height="80dp"
+            android:layout_width="72dp"
+            android:layout_height="72dp"
             android:layout_marginStart="16dp"
             android:layout_marginEnd="16dp"
             android:background="@drawable/bg_ar_add"
@@ -180,7 +187,7 @@
             android:minHeight="56dp"
             android:text="@string/ar_save"
             android:textAllCaps="false"
-            android:textColor="#FFFFFF"
+            android:textColor="#141414"
             android:textSize="16sp"
             android:textStyle="bold" />
     </LinearLayout>

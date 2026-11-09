@@ -14,7 +14,8 @@ import android.view.animation.LinearInterpolator
 
 /**
  * Original looping "move your phone" animation: a phone outline sweeps left and right in a gentle
- * arc over a tilted surface with a few dots, on a dark round backdrop. Drawn with Canvas only.
+ * arc over a tilted surface with a few tape-yellow dots, on a 60% black round backdrop. Drawn with
+ * Canvas only.
  * Runs only while attached and visible. With animations turned off in system settings it draws one
  * still frame.
  */
@@ -29,7 +30,7 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
     private var t = 0.5f
     private var animator: ValueAnimator? = null
 
-    private val backdropPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(0x99, 0x11, 0x18, 0x27) }
+    private val backdropPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(0x99, 0x00, 0x00, 0x00) }
     private val surfaceFill = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(0x33, 0xFF, 0xFF, 0xFF) }
     private val surfaceLine =
         Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -37,7 +38,7 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
             style = Paint.Style.STROKE
             strokeWidth = dp(1.2f)
         }
-    private val dotPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.rgb(0xFB, 0xBF, 0x24) }
+    private val dotPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.rgb(0xFF, 0xC6, 0x29) }
     private val phonePaint =
         Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.WHITE

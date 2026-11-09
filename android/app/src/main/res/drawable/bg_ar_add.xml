@@ -1,13 +1,29 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Big round Add point button: white with an indigo ring. -->
+<!--
+    Big round + button. Tape yellow with an ink + once the circle is on a surface (activated);
+    a see-through grey until then. It stays tappable either way, so a tap can be explained.
+    The white ring keeps it visible over any camera picture.
+-->
 <ripple xmlns:android="http://schemas.android.com/apk/res/android"
-    android:color="#403730A3">
+    android:color="#33141414">
     <item>
-        <shape android:shape="oval">
-            <solid android:color="#FFFFFF" />
-            <stroke
-                android:width="4dp"
-                android:color="#3730A3" />
-        </shape>
+        <selector>
+            <item android:state_activated="true">
+                <shape android:shape="oval">
+                    <solid android:color="#FFC629" />
+                    <stroke
+                        android:width="3dp"
+                        android:color="#FFFFFF" />
+                </shape>
+            </item>
+            <item>
+                <shape android:shape="oval">
+                    <solid android:color="#66FFFFFF" />
+                    <stroke
+                        android:width="3dp"
+                        android:color="#B3FFFFFF" />
+                </shape>
+            </item>
+        </selector>
     </item>
 </ripple>
