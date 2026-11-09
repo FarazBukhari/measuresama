@@ -6,6 +6,7 @@ const native = vi.hoisted(() => ({
   existing: new Set<string>(),
   writes: [] as { path: string; directory: string; data: string; recursive?: boolean }[],
   failDocuments: false,
+  failData: false,
   shares: [] as { files?: string[] }[],
   toasts: [] as { message: string; tone: string; options?: unknown }[],
 }))
@@ -15,7 +16,7 @@ vi.mock('@capacitor/core', () => ({
 }))
 
 vi.mock('@capacitor/filesystem', () => ({
-  Directory: { Documents: 'DOCUMENTS', Cache: 'CACHE' },
+  Directory: { Documents: 'DOCUMENTS', Cache: 'CACHE', Data: 'DATA' },
   Filesystem: {
     // `existing` holds paths like "Measure Sama/photo.jpg"; the folder exists once it has a file.
     readdir: vi.fn(async ({ path }: { path: string }) => {
@@ -25,6 +26,7 @@ vi.mock('@capacitor/filesystem', () => ({
     }),
     writeFile: vi.fn(async (opts: { path: string; directory: string; data: string; recursive?: boolean }) => {
       if (opts.directory === 'DOCUMENTS' && native.failDocuments) throw new Error('Permission denied')
+      if (opts.directory === 'DATA' && native.failData) throw new Error('Disk full')
       native.writes.push(opts)
       return { uri: `file:///${opts.directory}/${opts.path}` }
     }),
@@ -39,7 +41,7 @@ vi.mock('../state/toast', () => ({
   toast: (message: string, tone: string, options?: unknown) => native.toasts.push({ message, tone, options }),
 }))
 
-const { downloadBlob, downloadDataUrl, downloadText, numberedFileName, safeFileName } = await import('./download')
+const { downloadBlob, downloadDataUrl, downloadText, numberedFileName, safeFileName, saveAppPhoto } = await import('./download')
 
 beforeEach(() => {
   native.isNative = false
@@ -47,6 +49,7 @@ beforeEach(() => {
   native.existing.clear()
   native.writes = []
   native.failDocuments = false
+  native.failData = false
   native.shares = []
   native.toasts = []
 })
@@ -124,5 +127,30 @@ describe('downloadBlob in the native app', () => {
     const result = await downloadDataUrl('data:image/png;base64,iVBORw0KGgo=', 'qr.png')
     expect(result).toMatchObject({ method: 'saved', path: 'Measure Sama/qr.png' })
     expect(native.writes[0].data).toBe('iVBORw0KGgo=')
+  })
+})
+
+describe('saveAppPhoto', () => {
+  it('does nothing in the browser', async () => {
+    await expect(saveAppPhoto(new Blob(['x'], { type: 'image/jpeg' }))).resolves.toBeUndefined()
+    expect(native.writes).toHaveLength(0)
+  })
+
+  it('writes a JPEG into the app’s private measurements folder, quietly', async () => {
+    native.isNative = true
+    const uri = await saveAppPhoto(new Blob([new Uint8Array([255, 216, 255])], { type: 'image/jpeg' }))
+    expect(native.writes).toHaveLength(1)
+    const w = native.writes[0]
+    expect(w).toMatchObject({ directory: 'DATA', recursive: true, data: btoa(String.fromCharCode(255, 216, 255)) })
+    expect(w.path).toMatch(/^measurements\/[\w-]+\.jpg$/)
+    expect(uri).toBe(`file:///DATA/${w.path}`)
+    expect(native.toasts).toEqual([])
+  })
+
+  it('gives undefined instead of rejecting when the file can’t be written', async () => {
+    native.isNative = true
+    native.failData = true
+    await expect(saveAppPhoto(new Blob(['x']))).resolves.toBeUndefined()
+    expect(native.toasts).toEqual([])
   })
 })

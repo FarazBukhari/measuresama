@@ -45,7 +45,8 @@ public class ArMeasurePlugin: CAPPlugin, CAPBridgedPlugin {
         var result: [String: Any] = [
             "status": supported ? "supported" : "unsupported",
             "platform": "ios",
-            "lidar": supported && ARWorldTrackingConfiguration.supportsSceneReconstruction(.mesh)
+            "lidar": supported && ARWorldTrackingConfiguration.supportsSceneReconstruction(.mesh),
+            "modes": ["distance"]
         ]
         if !supported {
             result["reason"] = Self.unsupportedReason
@@ -73,6 +74,8 @@ public class ArMeasurePlugin: CAPPlugin, CAPBridgedPlugin {
             call.reject("Unit must be 'cm' or 'in'.", "INVALID_ARGUMENT")
             return
         }
+        // Other AR modes are Android-only for now; JS checks availability.modes first.
+        // iOS parity is a later phase (docs/PLAN.md). NOT BUILT OR TESTED.
         guard mode == "distance" else {
             call.reject("This measuring mode is coming soon.", "NOT_IMPLEMENTED")
             return

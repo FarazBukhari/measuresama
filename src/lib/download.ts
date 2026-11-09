@@ -145,6 +145,31 @@ export async function downloadBlob(blob: Blob, filename: string): Promise<SaveRe
   return { method: 'download' }
 }
 
+function photoId(): string {
+  try {
+    return crypto.randomUUID()
+  } catch {
+    return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`
+  }
+}
+
+/**
+ * Keep a measurement photo in the app's private storage (app only), next to the AR photos:
+ * Data/measurements/<uuid>.jpg. Gives its file:// URI, or undefined on the web or if it can't be
+ * written. No toast, never rejects: the measurement is still saved without the photo.
+ */
+export async function saveAppPhoto(blob: Blob): Promise<string | undefined> {
+  if (!Capacitor.isNativePlatform()) return undefined
+  try {
+    const { Directory, Filesystem } = await import('@capacitor/filesystem')
+    const data = await blobToBase64(blob)
+    const { uri } = await Filesystem.writeFile({ path: `measurements/${photoId()}.jpg`, data, directory: Directory.Data, recursive: true })
+    return uri || undefined
+  } catch {
+    return undefined
+  }
+}
+
 /** Save plain text content as a file. */
 export function downloadText(text: string, filename: string, mime = 'text/plain'): Promise<SaveResult> {
   return downloadBlob(new Blob([text], { type: `${mime};charset=utf-8` }), filename)

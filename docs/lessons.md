@@ -61,6 +61,25 @@ Read before planning. Each item cost real time once.
   servers by port with `ss -ltnp`.
 - `\uXXXX` escapes written through tools can turn into real invisible characters in files.
 
+## AR modes and the shared engine
+
+- **A silent no-op + button looks broken.** The first phone test: no animation while searching
+  and + did nothing, so it felt dead. The + button now looks dimmed and says why (its
+  description changes), the circle shakes, the phone buzzes and "Aim at a surface" shows when
+  it is tapped off a surface. Never leave a control that silently does nothing.
+- **Never call `start()` for a mode outside `availability.modes`.** The plugin rejects it
+  (`NOT_IMPLEMENTED`), and a rejected plugin call is logged as a console error that fails the
+  device tests. iOS lists only `distance`; web lists none. Use `canStartMode()`.
+- **Keep per-mode rules in the pure `MeasureFlow`**, not the GL-thread engine: JUnit tests run in
+  seconds and caught the mistakes before any phone did.
+- **Don't run Gradle and Playwright at the same time.** CPU contention makes the e2e tests time out.
+  Run them one after the other.
+- **Photo-measure device test**: `setInputFiles` can't reach host files from a WebView. Build the
+  File in the page and put it on the input with `DataTransfer`, then fire `change`
+  (`setPhotoFixtureInPage` in `e2e/photoFixture.ts`).
+- **A saved history file is read by version.** v1 (distance only) is read as is and rewritten
+  as v2 at the next change; items missing a field their mode needs are dropped on load.
+
 ## Testing
 
 - Playwright `getByLabel('X')` also matches the copy button "Copy X": use `{ exact: true }`

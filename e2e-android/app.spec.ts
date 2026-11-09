@@ -1,3 +1,4 @@
+import { setPhotoFixtureInPage } from '../e2e/photoFixture'
 import { expect, go, PKG, test } from './fixtures'
 
 // These run inside the installed Android app (its WebView) on the CI emulator, where Google
@@ -8,6 +9,8 @@ const back = (device: { shell: (cmd: string) => Promise<Buffer> }) => device.she
 test('the app launches on the home page', async ({ app, errors }) => {
   await expect(app.getByRole('heading', { level: 1, name: 'Measure Sama' })).toBeVisible()
   await expect(app.getByTestId('mode-card')).toHaveCount(9)
+  // Every mode is built, so none is marked coming soon.
+  await expect(app.locator('[data-testid="mode-card"][data-status="available"]')).toHaveCount(9)
   const overflow = await app.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)
   expect(overflow, 'page scrolls sideways').toBeLessThanOrEqual(0)
   expect(errors).toEqual([])
@@ -93,5 +96,40 @@ test('AR distance falls back to the on-screen ruler on a phone without AR', asyn
   await expect(app.getByRole('button', { name: 'Start measuring' })).toHaveCount(0)
   await fallback.getByRole('button', { name: 'Use the on-screen ruler' }).click()
   await expect(app.getByRole('heading', { level: 1, name: 'On-screen ruler' })).toBeVisible()
+  expect(errors).toEqual([])
+})
+
+// Every AR mode opens its own page. The emulator has no ARCore, so each shows the fallback and
+// never a start button (the plugin's start() is never called here).
+const AR_MODES = [
+  { mode: 'distance', h1: 'Measure a distance' },
+  { mode: 'path', h1: 'Measure a path' },
+  { mode: 'area', h1: 'Measure an area' },
+  { mode: 'angle', h1: 'Measure an angle' },
+  { mode: 'height', h1: 'Measure height' },
+  { mode: 'volume', h1: 'Measure volume' },
+  { mode: 'room-plan', h1: 'Room plan' },
+]
+
+for (const m of AR_MODES) {
+  test(`AR ${m.mode} page shows the fallback on a phone without AR`, async ({ app, errors }) => {
+    await go(app, `/ar/${m.mode}`)
+    await expect(app.getByRole('heading', { level: 1, name: m.h1 })).toBeVisible()
+    await expect(app.getByTestId('ar-fallback')).toBeVisible({ timeout: 30_000 })
+    await expect(app.getByRole('button', { name: 'Start measuring' })).toHaveCount(0)
+    expect(errors).toEqual([])
+  })
+}
+
+test('photo measure loads a photo and shows the four card corners', async ({ app, errors }) => {
+  await go(app, '/photo')
+  await expect(app.getByRole('heading', { level: 1, name: 'Photo measure' })).toBeVisible()
+  // The file is built inside the WebView (setInputFiles can't reach host files from here).
+  await setPhotoFixtureInPage(app, '[data-testid="photo-input-choose"]')
+  await expect(app.getByTestId('photo-canvas')).toBeVisible({ timeout: 30_000 })
+  for (let i = 1; i <= 4; i++) await expect(app.getByRole('button', { name: `Card corner ${i}`, exact: true })).toBeVisible()
+  // Not checked here: the 10.0 cm reading. It needs the four corners dragged onto the card, and
+  // pointer drags through CDP are not reliable in the WebView. The web e2e (e2e/photo.spec.ts)
+  // covers the reading; this test covers photo loading in the real WebView.
   expect(errors).toEqual([])
 })

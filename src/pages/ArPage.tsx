@@ -1,23 +1,38 @@
-import { Camera, Download, RefreshCw, Ruler } from 'lucide-react'
+import { Camera, Download, Image as ImageIcon, RefreshCw, Ruler } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router'
-import { ArGestureArt, InstallArt, NoCameraArt, ScanStepArt, TapEndArt, TapStartArt } from '../components/ModeArt'
+import { useNavigate, useParams } from 'react-router'
+import { ArGestureArt, InstallArt, ModeArt, NoCameraArt, ScanStepArt, TapEndArt, TapStartArt } from '../components/ModeArt'
 import { ChoiceGroup } from '../components/ChoiceGroup'
 import { PageHeader } from '../components/layout/PageHeader'
 import { Alert, Button, Card, Stack } from '../components/ui'
 import { useDocumentTitle } from '../hooks/useDocumentTitle'
 import type { LengthUnit } from '../lib/units'
-import { ArMeasure, arErrorCode, checkArAvailability, isArMeasurement, requestArInstall, type ArAvailability, type ArCancelled } from '../plugins/ar-measure'
+import { AR_MODE_COPY, isArPageMode } from '../modes/ar/modeCopy'
+import {
+  ArMeasure,
+  arErrorCode,
+  canStartMode,
+  checkArAvailability,
+  isArMeasurement,
+  requestArInstall,
+  type ArAvailability,
+  type ArCancelled,
+  type ArPluginMode,
+} from '../plugins/ar-measure'
 import { addFromArResult } from '../state/history'
 import { setUnit, showTipsStore, unitStore } from '../state/settings'
 import { toast } from '../state/toast'
+import NotFoundPage from './NotFoundPage'
 
 const UNIT_CHOICES: { value: LengthUnit; label: string }[] = [
   { value: 'cm', label: 'cm' },
   { value: 'in', label: 'in' },
 ]
 
-const STEPS = [
+type Step = { Art?: typeof ScanStepArt; text: string }
+
+/** Distance has its own pictures; the other modes number their tips. */
+const DISTANCE_STEPS: Step[] = [
   { Art: ScanStepArt, text: 'Scan the floor' },
   { Art: TapStartArt, text: 'Tap one end' },
   { Art: TapEndArt, text: 'Tap the other end' },
@@ -56,8 +71,17 @@ function errorNotice(e: unknown): Notice {
   }
 }
 
+/** /ar is distance; /ar/:mode is any other AR mode. Photo measure and unknown names have no AR page. */
 export default function ArPage() {
-  useDocumentTitle('Measure a distance')
+  const { mode = 'distance' } = useParams()
+  if (!isArPageMode(mode)) return <NotFoundPage />
+  return <ArModePage key={mode} mode={mode} />
+}
+
+function ArModePage({ mode }: { mode: ArPluginMode }) {
+  const copy = AR_MODE_COPY[mode]
+  const steps: Step[] = mode === 'distance' ? DISTANCE_STEPS : copy.tips.map((text) => ({ text }))
+  useDocumentTitle(copy.title)
   const navigate = useNavigate()
   const unit = unitStore.use()
   const showTips = showTipsStore.use()
@@ -86,10 +110,12 @@ export default function ArPage() {
   }, [attempt])
 
   const start = async () => {
+    // Only modes this build can measure: a rejected plugin call logs a console error.
+    if (!canStartMode(availability, mode)) return
     setNotice(null)
     setBusy(true)
     try {
-      const r = await ArMeasure.start({ mode: 'distance', unit })
+      const r = await ArMeasure.start({ mode, unit })
       if (isArMeasurement(r)) {
         const item = addFromArResult(r)
         toast('Saved', 'success')
@@ -122,28 +148,35 @@ export default function ArPage() {
   }
 
   const status = availability?.status
+  const canStart = canStartMode(availability, mode)
 
   return (
     <div className="flex flex-col">
-      <PageHeader back="/" title="Measure a distance" />
+      <PageHeader back="/" title={copy.title} />
 
       {!availability ? (
         <p role="status" className="flex items-center gap-3 text-muted-foreground">
           <span className="size-5 animate-spin rounded-full border-2 border-current border-t-transparent" aria-hidden="true" />
           Checking your phone…
         </p>
-      ) : status === 'supported' ? (
+      ) : canStart ? (
         <Stack>
           <Card>
             <div className="flex justify-center">
-              <ArGestureArt className="w-full max-w-60" />
+              {mode === 'distance' ? <ArGestureArt className="w-full max-w-60" /> : <ModeArt id={mode} className="size-32" />}
             </div>
           </Card>
-          {showTips && (
+          {showTips && steps.length > 0 && (
             <ol aria-label="How to measure" className="grid grid-cols-3 gap-2">
-              {STEPS.map(({ Art, text }) => (
+              {steps.map(({ Art, text }, i) => (
                 <li key={text} className="flex flex-col items-center gap-2 text-center text-sm font-semibold">
-                  <Art className="size-12" />
+                  {Art ? (
+                    <Art className="size-12" />
+                  ) : (
+                    <span className="flex size-12 items-center justify-center rounded-full bg-primary text-lg font-extrabold text-primary-foreground tabular-nums" aria-hidden="true">
+                      {i + 1}
+                    </span>
+                  )}
                   {text}
                 </li>
               ))}
@@ -159,29 +192,47 @@ export default function ArPage() {
           </div>
         </Stack>
       ) : (
-        <ArFallback availability={availability} busy={busy} onInstall={() => void install()} onRetry={recheck} onRuler={() => navigate('/ruler')} />
+        <ArFallback
+          availability={availability}
+          modeUnavailable={status === 'supported'}
+          busy={busy}
+          onInstall={() => void install()}
+          onRetry={recheck}
+          onRuler={() => navigate('/ruler')}
+          onPhoto={() => navigate('/photo')}
+        />
       )}
     </div>
   )
 }
 
+/**
+ * Shown when this mode can't start here: AR is missing or needs the Google app, or (modeUnavailable)
+ * AR works but this build only measures other modes (iOS today). Always offers the ruler and photo measure.
+ */
 function ArFallback({
   availability,
+  modeUnavailable,
   busy,
   onInstall,
   onRetry,
   onRuler,
+  onPhoto,
 }: {
   availability: ArAvailability
+  modeUnavailable: boolean
   busy: boolean
   onInstall: () => void
   onRetry: () => void
   onRuler: () => void
+  onPhoto: () => void
 }) {
-  const { status, reason } = availability
+  const { reason } = availability
+  const status = modeUnavailable ? 'mode-unavailable' : availability.status
   const needsApp = status === 'needs-install' || status === 'needs-update'
-  const heading =
-    status === 'needs-install'
+  const heading = modeUnavailable
+    ? 'Coming soon on this phone'
+    : status === 'needs-install'
       ? 'One free app needed'
       : status === 'needs-update'
         ? 'Update one free app'
@@ -210,6 +261,9 @@ function ArFallback({
         )}
         <Button variant={needsApp || status === 'unknown' ? 'tonal' : 'primary'} icon={Ruler} fullWidth onClick={onRuler}>
           Use the on-screen ruler
+        </Button>
+        <Button variant="outline" icon={ImageIcon} fullWidth onClick={onPhoto}>
+          Use photo measure
         </Button>
       </div>
     </section>

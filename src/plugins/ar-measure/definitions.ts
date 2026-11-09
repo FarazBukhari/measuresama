@@ -12,20 +12,75 @@ export interface ArAvailability {
   platform: 'android' | 'ios' | 'web'
   reason?: string   // plain-language sentence for the user, e.g. "This phone can't run AR."
   lidar?: boolean   // iOS only: scene depth / mesh available
+  modes?: ArMode[]  // AR modes start() can run (Android: all but 'photo'; iOS: distance; web: none). Missing = ['distance'].
 }
+/** Modes the native plugin measures. 'photo' is web-only and never sent to start(). */
+export type ArPluginMode = Exclude<ArMode, 'photo'>
 export interface ArPoint { x: number; y: number; z: number }   // metres, AR world space
 export interface ArScreenshot { uri: string; width: number; height: number; mimeType: 'image/jpeg' }
 // uri = absolute file:// URI in app-private storage (Android: filesDir/measurements/<id>.jpg; iOS: Library/NoCloud/measurements/<id>.jpg). Display it with Capacitor.convertFileSrc(uri). Share it with @capacitor/share files:[uri].
-export interface ArMeasurement {
+/**
+ * A finished measurement. Lengths in metres, areas in m², volumes in m³, angles in degrees.
+ * Native rounds numbers to 5 decimals (angleDeg to 3).
+ */
+interface ArMeasurementBase<M extends ArPluginMode> {
   cancelled: false
-  mode: 'distance'
+  mode: M
   unit: LengthUnit        // echo of the unit the user saw
-  points: ArPoint[]       // distance: exactly 2 (A, B)
-  distanceM: number       // |B - A| in metres
-  areaM2?: number         // reserved for future modes
+  points: ArPoint[]
   screenshot?: ArScreenshot
   createdAt: string       // ISO 8601 UTC
 }
+/** points [A, B]. */
+export interface ArDistanceMeasurement extends ArMeasurementBase<'distance'> {
+  distanceM: number       // |B - A|
+}
+/** points [P1..Pn], n >= 2. */
+export interface ArPathMeasurement extends ArMeasurementBase<'path'> {
+  segmentsM: number[]     // n - 1 parts
+  distanceM: number       // sum(segmentsM)
+}
+/** points [P1..Pn], n >= 3, on one plane. */
+export interface ArAreaMeasurement extends ArMeasurementBase<'area'> {
+  segmentsM: number[]     // n sides, the last is Pn -> P1
+  perimeterM: number
+  areaM2: number          // shoelace in the plane's 2D basis
+  distanceM: number       // = perimeterM
+}
+/** points [A, V, B], V = the corner. */
+export interface ArAngleMeasurement extends ArMeasurementBase<'angle'> {
+  angleDeg: number        // 0..180
+  segmentsM: number[]     // [|A - V|, |B - V|]
+}
+/** points [base, top], top straight above base. */
+export interface ArHeightMeasurement extends ArMeasurementBase<'height'> {
+  heightM: number
+  distanceM: number       // = heightM
+}
+/** points [A, B, C, T]: A, B, C on the floor (BC square to AB), T straight above C. */
+export interface ArVolumeMeasurement extends ArMeasurementBase<'volume'> {
+  lengthM: number         // |AB|
+  widthM: number          // |BC|
+  heightM: number         // |T - C|
+  areaM2: number          // lengthM * widthM
+  volumeM3: number        // lengthM * widthM * heightM
+}
+/** points [C1..Cn], n >= 3 floor corners. */
+export interface ArRoomPlanMeasurement extends ArMeasurementBase<'room-plan'> {
+  segmentsM: number[]     // n walls, the last closes the room
+  perimeterM: number
+  areaM2: number
+  wallHeightM?: number    // only if measured
+  distanceM: number       // = perimeterM
+}
+export type ArMeasurement =
+  | ArDistanceMeasurement
+  | ArPathMeasurement
+  | ArAreaMeasurement
+  | ArAngleMeasurement
+  | ArHeightMeasurement
+  | ArVolumeMeasurement
+  | ArRoomPlanMeasurement
 export interface ArCancelled {
   cancelled: true
   reason: 'user' | 'permission-denied' | 'ar-unavailable' | 'tracking-lost'

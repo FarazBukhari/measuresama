@@ -6,6 +6,7 @@ import android.content.Intent
 import android.util.Log
 import androidx.activity.result.ActivityResult
 import com.foxysama.measuresama.R
+import com.getcapacitor.JSArray
 import com.getcapacitor.JSObject
 import com.getcapacitor.PermissionState
 import com.getcapacitor.Plugin
@@ -95,8 +96,9 @@ class ArMeasurePlugin : Plugin() {
             call.reject("Unknown unit. Use \"cm\" or \"in\".", INVALID_ARGUMENT)
             return
         }
-        if (mode != MODE_DISTANCE) {
-            call.reject("This measuring mode is coming soon.", NOT_IMPLEMENTED)
+        if (MeasureMode.fromId(mode) == null) {
+            // Only 'photo' gets here: it is measured in the web app, never with AR.
+            call.reject("This measuring mode doesn't use AR.", NOT_IMPLEMENTED)
             return
         }
         if (!arOpen.compareAndSet(false, true)) {
@@ -148,6 +150,7 @@ class ArMeasurePlugin : Plugin() {
             val intent =
                 Intent(context, ArMeasureActivity::class.java)
                     .putExtra(ArMeasureActivity.EXTRA_UNIT, call.getString("unit"))
+                    .putExtra(ArMeasureActivity.EXTRA_MODE, call.getString("mode"))
             startActivityForResult(call, intent, "onArResult")
         } catch (e: Exception) {
             fail(call, e)
@@ -192,6 +195,8 @@ class ArMeasurePlugin : Plugin() {
             .put("status", status)
             .put("platform", "android")
             .put("reason", ArAvailability.reasonFor(context, status))
+            // Always sent, whatever the status: the AR modes start() can run on this build.
+            .put("modes", JSArray().apply { MeasureMode.entries.forEach { put(it.id) } })
 
     private fun cancelled(reason: String, message: String?): JSObject {
         val result = JSObject().put("cancelled", true).put("reason", reason)
@@ -202,7 +207,6 @@ class ArMeasurePlugin : Plugin() {
     companion object {
         private const val TAG = "ArMeasurePlugin"
 
-        const val MODE_DISTANCE = "distance"
         private val KNOWN_MODES =
             setOf("distance", "path", "area", "angle", "height", "volume", "room-plan", "photo")
         private val KNOWN_UNITS = setOf(LengthFormat.UNIT_CM, LengthFormat.UNIT_IN)

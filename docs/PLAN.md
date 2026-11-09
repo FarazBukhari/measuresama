@@ -3,27 +3,31 @@
 ## (a) Current state
 
 Built:
-- React shell: home mode picker, AR entry (`/ar`) with fallback, on-screen ruler (`/ruler`) with bank-card calibration, history, settings, units (cm/in), share, CSV and JSON export.
-- `ArMeasure` plugin: typed TS contract in `src/plugins/ar-measure/`, web fallback.
-- Android: Kotlin + ARCore distance mode. Minimal OpenGL ES camera background plus a 2D Canvas overlay. ARCore is optional (install prompt). Depth is off.
-- CI: `ci.yml` (lint, typecheck, unit, build, web e2e) and `android.yml` (APK, emulator device tests).
+- React shell: home mode picker (9 modes), AR pages (`/ar`, `/ar/:mode`) with fallback, photo measure (`/photo`), on-screen ruler (`/ruler`) with bank-card calibration, history v2 (per-mode rows and detail), settings, units (cm/in), share, CSV and JSON export, room plan PDF (jsPDF, in the web layer).
+- `ArMeasure` plugin: typed TS contract in `src/plugins/ar-measure/`, web fallback. `checkAvailability().modes` lists what a build can start.
+- Android: one mode-aware AR engine (Kotlin + ARCore): `MeasureFlow` (pure logic) + `MeasureSession` (GL-thread engine) + `MeasureOverlayView`. Surface search shows a scan animation, the aim circle has two states and + stays dimmed until the circle is on a surface. Depth is off.
+- CI: `ci.yml` (lint, typecheck, unit, build, web e2e) and `android.yml` (APK, emulator device tests, no ARCore on the emulator).
 
-Not yet checked on a real phone: the AR screen. Use the checklist in section (f).
+| Mode | Android | iOS | Web |
+|---|---|---|---|
+| Distance | done | code written, **NOT BUILT OR TESTED** | fallback |
+| Path, Area, Angle, Height, Volume, Room plan | done | not started (reports `modes: ['distance']`) | fallback |
+| Photo measure | done (no AR) | same web code | done (no AR) |
+| On-screen ruler | done | same web code | done |
 
-**NOT BUILT OR TESTED: iOS.** Swift + ARKit/RealityKit code exists in `ios/App/App/`. There is no Xcode on the dev Mac and no cloud iOS build. Only a syntax parse and a plist lint were done. Expect compile fixes on the first Xcode build. Known weak spots: ARKit/RealityKit signatures (`ray(through:)`, `project(_:)`, `raycast`, `snapshot`), Swift 6 actor warnings, simulator guards, photo size, haptic rate, hint thresholds.
+Not yet checked on a real phone: every AR mode. Use the checklists in section (f).
+
+**NOT BUILT OR TESTED: iOS.** Swift + ARKit/RealityKit code exists in `ios/App/App/` for distance only. There is no Xcode on the dev Mac and no cloud iOS build. Only a syntax parse and a plist lint were done. Expect compile fixes on the first Xcode build. Known weak spots: ARKit/RealityKit signatures (`ray(through:)`, `project(_:)`, `raycast`, `snapshot`), Swift 6 actor warnings, simulator guards, photo size, haptic rate, hint thresholds.
 
 ## (b) Roadmap
 
-In the order the research suggests. Each mode follows [MODE_GUIDE.md](MODE_GUIDE.md).
+Each mode follows [MODE_GUIDE.md](MODE_GUIDE.md).
 
-1. **Distance**: done on Android.
-2. **Height**: pick a floor point, then drag straight up (vertical extrude along the locked plane's normal). Result is one length.
-3. **Angle**: three points (a corner and two ends), angle from the two vectors. Show degrees.
-4. **Path** (polyline): any number of points, sum of the segments. **Area & perimeter** (polygon): points on one locked plane, shoelace formula in the plane's 2D coordinates, plus the closing edge for perimeter.
-5. **Rectangle and circle**: rectangle from two opposite corners on the plane, circle from centre and radius. Give width, height, area, perimeter.
-6. **Volume** (box): a base rectangle on the floor, then extrude up for height.
-7. Later: **Room plan + PDF export**: walk the corners of a room, draw a 2D plan. PDF through `android.graphics.pdf.PdfDocument` on Android (or jsPDF in the web layer, which also works on iOS).
-8. Later: **Photo measure**: a photo with a reference object (bank card 85.6 x 54 mm, or A4) to set the scale.
+1. **Done on Android**: distance, height, angle, path, area & perimeter, volume, room plan + PDF.
+2. **Done everywhere**: photo measure (bank card for scale), on-screen ruler.
+3. **Next: phone testing.** Run every checklist in (f) and write the errors in the tables.
+4. **Rectangle and circle**: still to do. Rectangle from two opposite corners on the plane, circle from centre and radius. Give width, height, area, perimeter.
+5. **Later: iOS parity.** Port `MeasureFlow`, the engine and the overlay to Swift, report all modes in `modes`, then build in Xcode. **NOT BUILT OR TESTED** until then.
 
 Deferred on purpose: pile/heap, ToF sensors, auto-detect of shapes, any ML models.
 
@@ -63,33 +67,79 @@ Source: [docs/research/ar-ruler-rea.md](research/ar-ruler-rea.md) (static analys
 - **Q7, monetization**: heavy locking and ads. See (d).
 - **Q8, export**: capture the view as a bitmap (we use PixelCopy-style capture of the camera image plus overlay), PDF through `PdfDocument`, and store results as JSON so CSV is easy. Neither CSV nor DXF is offered by them.
 
-## (f) Test on your phone (AR distance)
+## (f) Test on your phone
 
-Use an Android phone that supports ARCore.
+Use an Android phone that supports ARCore. Install the APK from the `measuresama-apk` artifact of the Android workflow run.
 
-- [ ] Install the APK from the `measuresama-apk` artifact of the Android workflow run.
-- [ ] First launch: the home screen opens, no crash.
-- [ ] Open Distance: "Checking your phone..." then "Start measuring".
-- [ ] Camera permission prompt appears. Deny it: a plain message appears and the app does not crash.
-- [ ] Phone without Google Play Services for AR (or an old version): the install/update prompt appears.
-- [ ] A hint tells you to move the phone until a surface is found.
-- [ ] A haptic tick when a surface locks, and on each point.
-- [ ] Measure a known object: a bank card's 85.6 mm side, or an A4 sheet's 297 mm side. Write down the error.
-- [ ] Measure a 1 m tape laid on the floor. Write down the error.
-- [ ] Aim a line past the edge of the detected surface: it still measures.
-- [ ] Undo, Clear and Save work.
-- [ ] The saved result is in History with its photo.
-- [ ] Share opens the share sheet with the image and text.
+### Every AR mode: first launch and surface search
+
+- [ ] Home opens with 9 mode cards, no crash.
+- [ ] Open the mode: "Checking your phone…", then "Start measuring". Camera prompt appears. Deny it: a plain message, no crash.
+- [ ] Phone without Google Play Services for AR: the install/update prompt appears.
+- [ ] While no surface is found: the scan animation shows and the hint says "Scan a surface".
+- [ ] The aim circle has two looks: searching and on a surface. A haptic tick when it locks.
+- [ ] The + button is dimmed until the circle is on a surface (floor, for floor modes).
+- [ ] Tap + while off a surface: the circle shakes, the phone buzzes and "Aim at a surface" shows. Nothing is added.
+- [ ] Undo, Clear and Save are dimmed when they can't act.
+- [ ] Hints: cover the camera ("Too dark"), shake the phone ("Slow down").
+- [ ] "Less accurate past 5 m" shows beyond 5 m.
+- [ ] Background and come back mid-measure: no crash. Back closes the AR screen. Rotate: overlay stays correct.
 - [ ] Switching cm/in in Settings changes the labels.
-- [ ] Too-dark and moving-too-fast hints appear (cover the camera, shake the phone).
-- [ ] A warning appears beyond 5 m.
-- [ ] Go to the background and come back mid-measure: no crash.
-- [ ] Back button closes the AR screen.
-- [ ] Rotate the phone: the screen and overlay stay correct.
-- [ ] On an unsupported phone: the fallback shows, with the on-screen ruler and card calibration.
+- [ ] After Save: History has the row with its photo. Open it: Share opens the share sheet. CSV and JSON export include it.
 
-| Measured object | Real | Reading | Error |
-|---|---|---|---|
-| Bank card long side | 85.6 mm | | |
-| A4 long side | 297 mm | | |
-| Floor tape | 1000 mm | | |
+### Distance
+
+- [ ] "Tap + to start", tap, "Tap + at the end", tap. Label shows cm or m. Save.
+- [ ] Aim past the edge of the detected surface: it still measures.
+
+### Path
+
+- [ ] "Tap + to start", tap at every turn ("Tap + to add"). Total sits above the bottom bar, side labels on each part. Save. Detail shows Total and Parts.
+
+### Area & perimeter
+
+- [ ] Tap each corner in order ("Tap + on a corner", "Next corner"). The shape fills amber, the closing side is dashed. Label inside shows the area. Save. Detail shows Area and Perimeter.
+- [ ] Try on a wall: it still works (one plane).
+
+### Angle
+
+- [ ] "Tap + on the corner" order: edge, corner, other edge. Arc and degrees show at the corner. Detail shows Angle and Side 1, Side 2.
+
+### Height
+
+- [ ] Floor only for the first tap ("Tap + at the bottom"). Then "Raise to the top": a dashed vertical line follows the aim. Tap at the top. Detail shows Height.
+
+### Volume
+
+- [ ] Two floor corners (length), then the width (snaps square to the first side), then raise to the top. Box shows. Detail shows Volume (L under 1 m³), Size, other unit, Base.
+
+### Room plan + PDF
+
+- [ ] Floor only. Tap each corner ("Tap + on a corner"). The circle snaps to the first corner: "Tap + to close", haptic tick. Then "Set wall height" (optional). Save.
+- [ ] Detail draws the SVG plan with wall numbers and lengths. Save PDF: a file named `room-plan-YYYY-MM-DD.pdf` in Documents > Measure Sama. Open it: plan, area, perimeter, walls.
+
+### Photo measure (no AR)
+
+- [ ] Put a bank card flat on a table next to the object. "Take photo" opens the camera, or use "Choose photo".
+- [ ] Drag the 4 corners onto the card. The magnifier shows while dragging. Lines stay blocked until the card is a usable shape.
+- [ ] Add a line, drag its ends along the object. Length shows. "Swap sides" if the card is read the wrong way round.
+- [ ] Save: opens the detail with the photo. A photo that isn't an image shows "Can’t open this photo".
+
+### Errors
+
+Write down the reading and the error (Reading minus Real).
+
+| Mode | Measured object | Real | Reading | Error |
+|---|---|---|---|---|
+| Distance | Bank card long side | 85.6 mm | | |
+| Distance | Floor tape | 1000 mm | | |
+| Path | Tape bent into an L (500 + 500) | 1000 mm | | |
+| Area | A4 sheet on a table | 623.7 cm² | | |
+| Area | Floor tile or rug | measured with tape | | |
+| Angle | Corner of a book or room | 90.0° | | |
+| Height | Door | 2030 mm (check yours) | | |
+| Height | Tape stood on the floor | 1000 mm | | |
+| Volume | Moving box | measured with tape | | |
+| Room plan | Room (area, perimeter) | measured with tape | | |
+| Photo | Bank card long side (no AR) | 85.6 mm | | |
+| Photo | A4 long side, card beside it | 297 mm | | |

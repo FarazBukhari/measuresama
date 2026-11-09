@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { Route, Routes, useLocation, useNavigate } from 'react-router'
 import { AppShell } from './components/layout/AppShell'
 import { registerBackButton } from './native/backButton'
+import PhotoMeasurePage from './modes/photo/PhotoMeasurePage'
 import ArPage from './pages/ArPage'
 import HistoryDetailPage from './pages/HistoryDetailPage'
 import HistoryPage from './pages/HistoryPage'
@@ -45,7 +46,9 @@ export default function App() {
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/ar" element={<ArPage />} />
+        <Route path="/ar/:mode" element={<ArPage />} />
         <Route path="/ruler" element={<RulerPage />} />
+        <Route path="/photo" element={<PhotoMeasurePage />} />
         <Route path="/history" element={<HistoryPage />} />
         <Route path="/history/:id" element={<HistoryDetailPage />} />
         <Route path="/settings" element={<SettingsPage />} />

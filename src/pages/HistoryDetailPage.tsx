@@ -2,13 +2,14 @@ import { Capacitor } from '@capacitor/core'
 import { Share2, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
-import { MeasurementPhoto } from '../components/MeasurementPhoto'
 import { PageHeader } from '../components/layout/PageHeader'
-import { Button, TapeReadout, TextArea } from '../components/ui'
+import { Button, TextArea } from '../components/ui'
 import { useDocumentTitle } from '../hooks/useDocumentTitle'
 import { formatDateTime } from '../lib/format'
-import { formatLength } from '../lib/units'
+import type { LengthUnit } from '../lib/units'
 import { MODES } from '../modes/catalog'
+import { ResultDetail } from '../modes/results/ResultDetail'
+import { shareText } from '../modes/results/summary'
 import { historyStore, removeHistoryItem, setHistoryNote, type HistoryItem } from '../state/history'
 import { unitStore } from '../state/settings'
 import { toast } from '../state/toast'
@@ -16,11 +17,11 @@ import { toast } from '../state/toast'
 const isCancel = (e: unknown) => /cancel|abort/i.test(e instanceof Error ? `${e.name} ${e.message}` : String(e))
 
 /**
- * Share the length (and the photo in the app). Only text and the photo file are shared:
+ * Share the result (and the photo in the app). Only text and the photo file are shared:
  * the app's own address (https://localhost) means nothing to anyone else.
  */
-async function shareMeasurement(item: HistoryItem, length: string): Promise<void> {
-  const text = `${length} measured with Measure Sama`
+async function shareMeasurement(item: HistoryItem, unit: LengthUnit): Promise<void> {
+  const text = shareText(item, unit)
   if (Capacitor.isNativePlatform()) {
     try {
       const { Share } = await import('@capacitor/share')
@@ -68,10 +69,8 @@ export default function HistoryDetailPage() {
 function Detail({ item }: { item: HistoryItem }) {
   const navigate = useNavigate()
   const unit = unitStore.use()
-  const other = unit === 'cm' ? 'in' : 'cm'
   const [note, setNote] = useState(item.note ?? '')
   const [confirming, setConfirming] = useState(false)
-  const main = formatLength(item.distanceM, unit)
 
   const remove = async () => {
     navigate('/history', { replace: true })
@@ -84,10 +83,7 @@ function Detail({ item }: { item: HistoryItem }) {
       <PageHeader back="/history" title="Measurement" />
 
       <div className="flex flex-col gap-4">
-        {item.screenshotUri && Capacitor.isNativePlatform() && (
-          <MeasurementPhoto uri={item.screenshotUri} alt={`Photo of the ${main} measurement`} className="max-h-[60vh] w-full rounded-[20px]" />
-        )}
-        <TapeReadout value={main} valueTestId="length-main" secondary={formatLength(item.distanceM, other)} secondaryTestId="length-other" />
+        <ResultDetail item={item} unit={unit} />
         <p className="text-sm text-muted-foreground">
           {MODES.find((m) => m.id === item.mode)?.name ?? 'Measurement'} · {formatDateTime(item.createdAt)}
         </p>
@@ -105,7 +101,7 @@ function Detail({ item }: { item: HistoryItem }) {
         />
 
         <div className="grid grid-cols-2 gap-3">
-          <Button icon={Share2} onClick={() => void shareMeasurement(item, main)}>
+          <Button icon={Share2} onClick={() => void shareMeasurement(item, unit)}>
             Share
           </Button>
           <Button variant="tonal" icon={Trash2} onClick={() => setConfirming(true)} disabled={confirming}>

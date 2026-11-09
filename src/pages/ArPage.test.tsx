@@ -29,12 +29,14 @@ function Detail() {
   return <p>Detail {id}</p>
 }
 
-function renderPage() {
+function renderPage(path = '/ar') {
   return render(
-    <MemoryRouter initialEntries={['/ar']}>
+    <MemoryRouter initialEntries={[path]}>
       <Routes>
         <Route path="/ar" element={<ArPage />} />
+        <Route path="/ar/:mode" element={<ArPage />} />
         <Route path="/ruler" element={<p>Ruler page</p>} />
+        <Route path="/photo" element={<p>Photo page</p>} />
         <Route path="/history/:id" element={<Detail />} />
       </Routes>
     </MemoryRouter>,
@@ -42,6 +44,8 @@ function renderPage() {
 }
 
 const supported: ArAvailability = { status: 'supported', platform: 'android' }
+const androidAll: ArAvailability = { status: 'supported', platform: 'android', modes: ['distance', 'path', 'area', 'angle', 'height', 'volume', 'room-plan'] }
+const iosToday: ArAvailability = { status: 'supported', platform: 'ios', modes: ['distance'] }
 
 beforeEach(() => {
   setUnit('cm')
@@ -138,5 +142,96 @@ describe('AR distance page', () => {
     expect(screen.queryByRole('button', { name: 'Install it' })).toBeNull()
     await userEvent.click(screen.getByRole('button', { name: 'Use the on-screen ruler' }))
     expect(await screen.findByText('Ruler page')).toBeInTheDocument()
+  })
+})
+
+describe('AR mode pages', () => {
+  it.each([
+    ['/ar/height', 'Measure height'],
+    ['/ar/angle', 'Measure an angle'],
+    ['/ar/path', 'Measure a path'],
+    ['/ar/area', 'Measure an area'],
+    ['/ar/volume', 'Measure volume'],
+    ['/ar/room-plan', 'Room plan'],
+  ])('%s shows its title and starts its own mode', async (path, title) => {
+    plugin.checkArAvailability.mockResolvedValue(androidAll)
+    plugin.start.mockResolvedValue({ cancelled: true, reason: 'user' })
+    renderPage(path)
+    expect(screen.getByRole('heading', { level: 1, name: title })).toBeInTheDocument()
+    expect(document.title).toBe(`${title} – Measure Sama`)
+    await userEvent.click(await screen.findByRole('button', { name: 'Start measuring' }))
+    expect(plugin.start).toHaveBeenCalledWith({ mode: path.slice(4), unit: 'cm' })
+  })
+
+  it('saves an area and opens it', async () => {
+    plugin.checkArAvailability.mockResolvedValue(androidAll)
+    plugin.start.mockResolvedValue({
+      cancelled: false,
+      mode: 'area',
+      unit: 'cm',
+      points: [
+        { x: 0, y: 0, z: 0 },
+        { x: 2, y: 0, z: 0 },
+        { x: 2, y: 0, z: 1 },
+        { x: 0, y: 0, z: 1 },
+      ],
+      segmentsM: [2, 1, 2, 1],
+      perimeterM: 6,
+      areaM2: 2,
+      distanceM: 6,
+      createdAt: '2026-11-06T12:00:00Z',
+    })
+    renderPage('/ar/area')
+    await userEvent.click(await screen.findByRole('button', { name: 'Start measuring' }))
+    const [item] = historyStore.get()
+    expect(item).toMatchObject({ mode: 'area', areaM2: 2, perimeterM: 6, segmentsM: [2, 1, 2, 1] })
+    expect(await screen.findByText(`Detail ${item.id}`)).toBeInTheDocument()
+  })
+
+  it('does not save a result that is missing its numbers', async () => {
+    plugin.checkArAvailability.mockResolvedValue(androidAll)
+    plugin.start.mockResolvedValue({ cancelled: false, mode: 'volume', unit: 'cm', points: [], lengthM: 1, createdAt: '2026-11-06T12:00:00Z' } as unknown as ArStartResult)
+    renderPage('/ar/volume')
+    await userEvent.click(await screen.findByRole('button', { name: 'Start measuring' }))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Start measuring' })).toBeEnabled())
+    expect(historyStore.get()).toEqual([])
+  })
+
+  it('says "coming soon" and never calls start when this phone can only measure other modes', async () => {
+    plugin.checkArAvailability.mockResolvedValue(iosToday)
+    renderPage('/ar/area')
+    const fallback = await screen.findByTestId('ar-fallback')
+    expect(fallback).toHaveAttribute('data-status', 'mode-unavailable')
+    expect(screen.getByRole('heading', { name: 'Coming soon on this phone' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Start measuring' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Install it' })).toBeNull()
+    await userEvent.click(screen.getByRole('button', { name: 'Use photo measure' }))
+    expect(await screen.findByText('Photo page')).toBeInTheDocument()
+    expect(plugin.start).not.toHaveBeenCalled()
+  })
+
+  it('treats an older build without a mode list as distance only', async () => {
+    plugin.checkArAvailability.mockResolvedValue(supported)
+    renderPage('/ar/height')
+    expect(await screen.findByTestId('ar-fallback')).toHaveAttribute('data-status', 'mode-unavailable')
+    expect(plugin.start).not.toHaveBeenCalled()
+  })
+
+  it('offers photo measure when AR is missing', async () => {
+    plugin.checkArAvailability.mockResolvedValue({ status: 'unsupported', platform: 'web', modes: [] })
+    renderPage('/ar/path')
+    const fallback = await screen.findByTestId('ar-fallback')
+    expect(fallback).toHaveAttribute('data-status', 'unsupported')
+    expect(screen.getByRole('heading', { name: 'This phone can’t measure with the camera' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Use the on-screen ruler' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Use photo measure' })).toBeInTheDocument()
+    expect(plugin.start).not.toHaveBeenCalled()
+  })
+
+  it.each(['/ar/photo', '/ar/nope'])('%s is not an AR page', async (path) => {
+    plugin.checkArAvailability.mockResolvedValue(androidAll)
+    renderPage(path)
+    expect(screen.getByRole('heading', { level: 1, name: 'We can’t find that page' })).toBeInTheDocument()
+    expect(plugin.checkArAvailability).not.toHaveBeenCalled()
   })
 })

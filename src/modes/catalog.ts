@@ -35,13 +35,13 @@ export const MODES: readonly ModeInfo[] = [
     path: '/ruler',
     camera: false,
   },
-  { id: 'height', name: 'Height', description: 'How tall something is, from the floor up.', status: 'coming-soon', icon: MoveVertical, camera: true },
-  { id: 'angle', name: 'Angle', description: 'The angle between two edges or walls.', status: 'coming-soon', icon: Triangle, camera: true },
-  { id: 'path', name: 'Path', description: 'Add up a line with several turns, like a skirting board.', status: 'coming-soon', icon: Spline, camera: true },
-  { id: 'area', name: 'Area & perimeter', description: 'Floor or wall area, and the length around it.', status: 'coming-soon', icon: SquareDashed, camera: true },
-  { id: 'volume', name: 'Volume', description: 'How much a box or room holds.', status: 'coming-soon', icon: Box, camera: true },
-  { id: 'room-plan', name: 'Room plan + PDF', description: 'Walk around a room to draw its plan and save it as a PDF.', status: 'coming-soon', icon: FileText, camera: true },
-  { id: 'photo', name: 'Photo measure', description: 'Measure in a photo using a bank card or sheet of paper for scale.', status: 'coming-soon', icon: Camera, camera: false },
+  { id: 'height', name: 'Height', description: 'How tall something is, from the floor up.', status: 'available', icon: MoveVertical, path: '/ar/height', camera: true },
+  { id: 'angle', name: 'Angle', description: 'The angle between two edges or walls.', status: 'available', icon: Triangle, path: '/ar/angle', camera: true },
+  { id: 'path', name: 'Path', description: 'Add up a line with several turns, like a skirting board.', status: 'available', icon: Spline, path: '/ar/path', camera: true },
+  { id: 'area', name: 'Area & perimeter', description: 'Floor or wall area, and the length around it.', status: 'available', icon: SquareDashed, path: '/ar/area', camera: true },
+  { id: 'volume', name: 'Volume', description: 'How much a box or room holds.', status: 'available', icon: Box, path: '/ar/volume', camera: true },
+  { id: 'room-plan', name: 'Room plan + PDF', description: 'Walk around a room to draw its plan and save it as a PDF.', status: 'available', icon: FileText, path: '/ar/room-plan', camera: true },
+  { id: 'photo', name: 'Photo measure', description: 'Measure in a photo, using a bank card for scale.', status: 'available', icon: Camera, path: '/photo', camera: false },
 ]
 
 export const availableModes = () => MODES.filter((m) => m.status === 'available')

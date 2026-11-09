@@ -1,6 +1,7 @@
 package com.foxysama.measuresama.ar
 
 import android.Manifest
+import android.animation.ObjectAnimator
 import android.app.Activity
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -62,7 +63,8 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 /**
- * AR distance screen, opened by [ArMeasurePlugin.start]. Returns one JSON result (an ArMeasurement
+ * AR measuring screen for every AR mode (distance, path, area, angle, height, volume, room plan),
+ * opened by [ArMeasurePlugin.start] with [EXTRA_MODE]. Returns one JSON result (an ArMeasurement
  * or an ArCancelled) in [EXTRA_RESULT].
  *
  * THREADING MODEL
@@ -72,8 +74,8 @@ import org.json.JSONObject
  * - Main thread handles taps. The '+' button, a tap on the camera view, Undo, Clear and Save only
  *   add a [Command] to [commands] (a ConcurrentLinkedQueue); the GL thread drains it at the start
  *   of each frame.
- * - Each frame the GL thread builds an immutable [OverlayState] (projected points, line, label and
- *   its position, reticle and its state, hint, distance warning), publishes it to
+ * - Each frame the GL thread builds an immutable [OverlayState] (projected points, lines, fill, arc,
+ *   labels, reticle and its state, hint, distance warning, button states), publishes it to
  *   [MeasureOverlayView] through an AtomicReference and calls postInvalidate(). The overlay only
  *   reads the latest snapshot.
  * - Results go back to the main thread with runOnUiThread (hint text, buttons, haptics, Save).
@@ -91,6 +93,7 @@ class ArMeasureActivity : AppCompatActivity(), GLSurfaceView.Renderer, MeasureSe
     private lateinit var clearButton: Button
     private lateinit var saveButton: Button
     private lateinit var addButton: ImageButton
+    private lateinit var scanView: ScanAnimationView
 
     private lateinit var displayRotationHelper: DisplayRotationHelper
     private lateinit var measure: MeasureSession
@@ -114,6 +117,17 @@ class ArMeasureActivity : AppCompatActivity(), GLSurfaceView.Renderer, MeasureSe
     /** Main thread only. */
     private var saving = false
     private var unit = LengthFormat.UNIT_CM
+    private var mode = MeasureMode.DISTANCE
+    private var onSurface = false
+    private var aimKind = AimKind.SURFACE
+    private var snapClose = false
+    private var scanShown = true
+    private var hintOverride = false
+    private val mainHandler = Handler(Looper.getMainLooper())
+    private val clearHintOverride = Runnable {
+        hintOverride = false
+        lastUi?.let { applyUi(it) }
+    }
 
     /** The parts of [OverlayState] shown by regular views; posted to the main thread on change. */
     private data class UiSnapshot(
@@ -121,6 +135,13 @@ class ArMeasureActivity : AppCompatActivity(), GLSurfaceView.Renderer, MeasureSe
         val warning: String?,
         val pointCount: Int,
         val planeLocked: Boolean,
+        val onSurface: Boolean,
+        val scanning: Boolean,
+        val canSave: Boolean,
+        val canUndo: Boolean,
+        val canClear: Boolean,
+        val aimKind: AimKind,
+        val snapClose: Boolean,
     )
 
     private data class Screenshot(val uri: String, val width: Int, val height: Int)
@@ -135,7 +156,9 @@ class ArMeasureActivity : AppCompatActivity(), GLSurfaceView.Renderer, MeasureSe
         setContentView(R.layout.activity_ar_measure)
 
         unit = if (intent.getStringExtra(EXTRA_UNIT) == LengthFormat.UNIT_IN) LengthFormat.UNIT_IN else LengthFormat.UNIT_CM
-        measure = MeasureSession(unit, hintTexts(), this)
+        // Older callers sent no mode: that was always distance.
+        mode = MeasureMode.fromId(intent.getStringExtra(EXTRA_MODE)) ?: MeasureMode.DISTANCE
+        measure = MeasureSession(mode, unit, hintTexts(), this, resources.displayMetrics.density)
         displayRotationHelper = DisplayRotationHelper(this)
 
         glView = findViewById(R.id.ar_gl_view)
@@ -146,6 +169,11 @@ class ArMeasureActivity : AppCompatActivity(), GLSurfaceView.Renderer, MeasureSe
         clearButton = findViewById(R.id.ar_clear)
         saveButton = findViewById(R.id.ar_save)
         addButton = findViewById(R.id.ar_add)
+        scanView = findViewById(R.id.ar_scan)
+        findViewById<TextView>(R.id.ar_mode).setText(modeName(mode))
+        // A docked label (e.g. a path's total) sits above the bottom controls.
+        val bottomBar = findViewById<View>(R.id.ar_bottom_bar)
+        bottomBar.addOnLayoutChangeListener { v, _, _, _, _, _, _, _, _ -> overlay.dockBottomPx = v.height }
 
         glView.preserveEGLContextOnPause = true
         glView.setEGLContextClientVersion(2)
@@ -153,8 +181,8 @@ class ArMeasureActivity : AppCompatActivity(), GLSurfaceView.Renderer, MeasureSe
         glView.setRenderer(this)
         glView.renderMode = GLSurfaceView.RENDERMODE_CONTINUOUSLY
 
-        overlay.setOnClickListener { queue(Command.ADD_POINT) }
-        addButton.setOnClickListener { queue(Command.ADD_POINT) }
+        overlay.setOnClickListener { onAddTapped() }
+        addButton.setOnClickListener { onAddTapped() }
         undoButton.setOnClickListener { queue(Command.UNDO) }
         clearButton.setOnClickListener { queue(Command.CLEAR) }
         saveButton.setOnClickListener { onSaveClicked() }
@@ -169,7 +197,21 @@ class ArMeasureActivity : AppCompatActivity(), GLSurfaceView.Renderer, MeasureSe
         )
 
         applySystemBarInsets()
-        applyUi(UiSnapshot(getString(R.string.ar_hint_getting_ready), null, 0, false))
+        applyUi(
+            UiSnapshot(
+                hint = getString(R.string.ar_hint_getting_ready),
+                warning = null,
+                pointCount = 0,
+                planeLocked = false,
+                onSurface = false,
+                scanning = true,
+                canSave = false,
+                canUndo = false,
+                canClear = false,
+                aimKind = AimKind.SURFACE,
+                snapClose = false,
+            ),
+        )
     }
 
     override fun onResume() {
@@ -232,6 +274,7 @@ class ArMeasureActivity : AppCompatActivity(), GLSurfaceView.Renderer, MeasureSe
     }
 
     override fun onDestroy() {
+        mainHandler.removeCallbacks(clearHintOverride)
         // The GL thread is paused (onPause ran), so ARCore objects can be released here.
         session?.let {
             measure.detachAll()
@@ -289,7 +332,20 @@ class ArMeasureActivity : AppCompatActivity(), GLSurfaceView.Renderer, MeasureSe
     }
 
     private fun postUiIfChanged(state: OverlayState) {
-        val next = UiSnapshot(state.hint, state.warning, state.pointCount, state.planeLocked)
+        val next =
+            UiSnapshot(
+                hint = state.hint,
+                warning = state.warning,
+                pointCount = state.pointCount,
+                planeLocked = state.planeLocked,
+                onSurface = state.onSurface,
+                scanning = state.scanning,
+                canSave = state.canSave,
+                canUndo = state.canUndo,
+                canClear = state.canClear,
+                aimKind = state.aimKind,
+                snapClose = state.snapClose,
+            )
         if (next == lastUi) return
         lastUi = next
         runOnUiThread { applyUi(next) }
@@ -305,8 +361,12 @@ class ArMeasureActivity : AppCompatActivity(), GLSurfaceView.Renderer, MeasureSe
         runOnUiThread { tick() }
     }
 
-    override fun onSaveReady(data: SaveData) {
-        runOnUiThread { captureAndFinish(data) }
+    override fun onAddRejected() {
+        runOnUiThread { rejectAdd() }
+    }
+
+    override fun onSaveReady(result: ModeResult, capture: OverlayState) {
+        runOnUiThread { captureAndFinish(result, capture) }
     }
 
     override fun onSaveUnavailable() {
@@ -317,6 +377,44 @@ class ArMeasureActivity : AppCompatActivity(), GLSurfaceView.Renderer, MeasureSe
     }
 
     // ---- Main thread --------------------------------------------------------------------------
+
+    /** Add-point tap. Always queued: the engine says (onAddRejected) if there is no surface. */
+    private fun onAddTapped() {
+        // The + button is dimmed (not disabled) off-surface, so a tap can be explained.
+        if (!saving) commands.add(Command.ADD_POINT)
+    }
+
+    /** Main thread: the engine refused a tap. Shake +, buzz, and say what to do for a moment. */
+    private fun rejectAdd() {
+        if (saving) return
+        val shake =
+            ObjectAnimator.ofFloat(
+                addButton,
+                View.TRANSLATION_X,
+                0f, -12f * resources.displayMetrics.density, 12f * resources.displayMetrics.density,
+                -8f * resources.displayMetrics.density, 8f * resources.displayMetrics.density, 0f,
+            )
+        shake.duration = 300
+        shake.start()
+        val feedback =
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                HapticFeedbackConstants.REJECT
+            } else {
+                HapticFeedbackConstants.LONG_PRESS
+            }
+        overlay.performHapticFeedback(feedback)
+        hintOverride = true
+        hintText.text =
+            getString(
+                when (aimKind) {
+                    AimKind.FLOOR -> R.string.ar_hint_aim_floor
+                    AimKind.VERTICAL -> R.string.ar_hint_raise_top
+                    AimKind.SURFACE -> R.string.ar_hint_aim_surface
+                },
+            )
+        mainHandler.removeCallbacks(clearHintOverride)
+        mainHandler.postDelayed(clearHintOverride, 1500)
+    }
 
     private fun queue(command: Command) {
         if (!saving) commands.add(command)
@@ -334,7 +432,11 @@ class ArMeasureActivity : AppCompatActivity(), GLSurfaceView.Renderer, MeasureSe
     }
 
     private fun applyUi(ui: UiSnapshot) {
-        if (hintText.text?.toString() != ui.hint) hintText.text = ui.hint
+        if (!hintOverride && hintText.text?.toString() != ui.hint) hintText.text = ui.hint
+        updateScan(ui.scanning)
+        onSurface = ui.onSurface
+        aimKind = ui.aimKind
+        snapClose = ui.snapClose
         if (ui.warning != null) {
             if (warningText.text?.toString() != ui.warning) warningText.text = ui.warning
             warningText.visibility = View.VISIBLE
@@ -345,10 +447,40 @@ class ArMeasureActivity : AppCompatActivity(), GLSurfaceView.Renderer, MeasureSe
         clearButton.setText(if (ui.pointCount == 0 && ui.planeLocked) R.string.ar_reset_surface else R.string.ar_clear)
         if (saving) return
         saveButton.setText(R.string.ar_save)
-        setEnabled(saveButton, ui.pointCount == 2)
-        setEnabled(undoButton, ui.pointCount > 0)
-        setEnabled(clearButton, ui.pointCount > 0 || ui.planeLocked)
+        setEnabled(saveButton, ui.canSave)
+        setEnabled(undoButton, ui.canUndo)
+        setEnabled(clearButton, ui.canClear)
         setEnabled(addButton, true)
+        applyAddState()
+    }
+
+    /** + looks off (but stays tappable) until the circle is on a surface. */
+    private fun applyAddState() {
+        addButton.alpha = if (onSurface) 1f else 0.4f
+        addButton.contentDescription =
+            getString(
+                when {
+                    snapClose -> R.string.ar_close_room_action
+                    onSurface -> R.string.ar_add_point
+                    aimKind == AimKind.FLOOR -> R.string.ar_add_point_floor_blocked
+                    else -> R.string.ar_add_point_blocked
+                },
+            )
+    }
+
+    /** Scan animation shows until a surface locks, then fades out over 200 ms. */
+    private fun updateScan(scanning: Boolean) {
+        if (scanning == scanShown) return
+        scanShown = scanning
+        scanView.animate().cancel()
+        if (scanning) {
+            scanView.alpha = 1f
+            scanView.visibility = View.VISIBLE
+        } else {
+            scanView.animate().alpha(0f).setDuration(200).withEndAction {
+                if (!scanShown) scanView.visibility = View.GONE
+            }.start()
+        }
     }
 
     private fun setEnabled(view: View, enabled: Boolean) {
@@ -391,7 +523,7 @@ class ArMeasureActivity : AppCompatActivity(), GLSurfaceView.Renderer, MeasureSe
      * Takes the screenshot (camera via PixelCopy + overlay drawn on top), writes it, and returns
      * the measurement. Without a screenshot if anything about the image fails.
      */
-    private fun captureAndFinish(data: SaveData) {
+    private fun captureAndFinish(data: ModeResult, capture: OverlayState) {
         if (resultSent.get()) return
         val width = glView.width
         val height = glView.height
@@ -406,8 +538,8 @@ class ArMeasureActivity : AppCompatActivity(), GLSurfaceView.Renderer, MeasureSe
                 bitmap,
                 { result ->
                     if (result == PixelCopy.SUCCESS) {
-                        // PixelCopy only sees the GL surface; draw the line and label on top.
-                        overlay.drawForCapture(Canvas(bitmap))
+                        // PixelCopy only sees the GL surface; draw the measurement on top.
+                        overlay.drawForCapture(Canvas(bitmap), capture)
                         Thread {
                             val shot = writeJpeg(bitmap)
                             runOnUiThread { finishWithMeasurement(data, shot) }
@@ -458,7 +590,7 @@ class ArMeasureActivity : AppCompatActivity(), GLSurfaceView.Renderer, MeasureSe
         }
     }
 
-    private fun finishWithMeasurement(data: SaveData, shot: Screenshot?) {
+    private fun finishWithMeasurement(data: ModeResult, shot: Screenshot?) {
         val result =
             try {
                 measurementJson(data, shot)
@@ -473,19 +605,26 @@ class ArMeasureActivity : AppCompatActivity(), GLSurfaceView.Renderer, MeasureSe
         sendResult(Activity.RESULT_OK, result)
     }
 
-    private fun measurementJson(data: SaveData, shot: Screenshot?): JSONObject {
+    /** The ArMeasurement JSON. Field order for distance is unchanged: cancelled, mode, unit, points, distanceM, createdAt, screenshot. */
+    private fun measurementJson(data: ModeResult, shot: Screenshot?): JSONObject {
         val points = JSONArray()
         for (p in data.points) {
-            points.put(JSONObject().put("x", round5(p.x.toDouble())).put("y", round5(p.y.toDouble())).put("z", round5(p.z.toDouble())))
+            val xyz = MeasurementFields.point(p)
+            points.put(JSONObject().put("x", xyz[0]).put("y", xyz[1]).put("z", xyz[2]))
         }
         val json =
             JSONObject()
                 .put("cancelled", false)
-                .put("mode", ArMeasurePlugin.MODE_DISTANCE)
+                .put("mode", data.mode.id)
                 .put("unit", unit)
                 .put("points", points)
-                .put("distanceM", round5(data.distanceM))
-                .put("createdAt", isoUtcNow())
+        for ((key, value) in MeasurementFields.of(data)) {
+            when (value) {
+                is List<*> -> json.put(key, JSONArray().apply { value.forEach { put(it) } })
+                else -> json.put(key, value)
+            }
+        }
+        json.put("createdAt", isoUtcNow())
         if (shot != null) {
             json.put(
                 "screenshot",
@@ -535,12 +674,40 @@ class ArMeasureActivity : AppCompatActivity(), GLSurfaceView.Renderer, MeasureSe
             },
         )
 
+    private fun modeName(mode: MeasureMode): Int =
+        when (mode) {
+            MeasureMode.DISTANCE -> R.string.ar_mode_distance
+            MeasureMode.PATH -> R.string.ar_mode_path
+            MeasureMode.AREA -> R.string.ar_mode_area
+            MeasureMode.ANGLE -> R.string.ar_mode_angle
+            MeasureMode.HEIGHT -> R.string.ar_mode_height
+            MeasureMode.VOLUME -> R.string.ar_mode_volume
+            MeasureMode.ROOM_PLAN -> R.string.ar_mode_room_plan
+        }
+
+    private fun progressHint(key: ProgressKey): Int =
+        when (key) {
+            ProgressKey.START -> R.string.ar_hint_surface_found
+            ProgressKey.END -> R.string.ar_hint_aim_end
+            ProgressKey.NEXT -> R.string.ar_hint_next
+            ProgressKey.ADD_OR_SAVE -> R.string.ar_hint_add_or_save
+            ProgressKey.CORNER -> R.string.ar_hint_corner
+            ProgressKey.NEXT_CORNER -> R.string.ar_hint_next_corner
+            ProgressKey.VERTEX -> R.string.ar_hint_vertex
+            ProgressKey.OTHER_END -> R.string.ar_hint_other_end
+            ProgressKey.BASE -> R.string.ar_hint_base
+            ProgressKey.RAISE_TOP -> R.string.ar_hint_raise_top
+            ProgressKey.CLOSE_OR_SAVE -> R.string.ar_hint_close_or_save
+            ProgressKey.WALL_HEIGHT -> R.string.ar_hint_wall_height
+            ProgressKey.DONE -> R.string.ar_hint_done
+        }
+
     private fun hintTexts() =
         HintTexts(
             coaching = getString(R.string.ar_hint_coaching),
-            surfaceFound = getString(R.string.ar_hint_surface_found),
-            aimEnd = getString(R.string.ar_hint_aim_end),
-            done = getString(R.string.ar_hint_done),
+            aimFloor = getString(R.string.ar_hint_aim_floor),
+            closeRoom = getString(R.string.ar_hint_close_room),
+            progress = ProgressKey.entries.associateWith { getString(progressHint(it)) },
             tooDark = getString(R.string.ar_hint_too_dark),
             tooFast = getString(R.string.ar_hint_too_fast),
             lowTexture = getString(R.string.ar_hint_low_texture),
@@ -556,6 +723,9 @@ class ArMeasureActivity : AppCompatActivity(), GLSurfaceView.Renderer, MeasureSe
         /** Intent extra: the unit the user picked ("cm" or "in"). */
         const val EXTRA_UNIT = "com.foxysama.measuresama.ar.UNIT"
 
+        /** Intent extra: the AR mode id ([MeasureMode.id]). Missing or unknown means distance. */
+        const val EXTRA_MODE = "com.foxysama.measuresama.ar.MODE"
+
         /** Result extra: ArMeasurement or ArCancelled as a JSON string. */
         const val EXTRA_RESULT = "com.foxysama.measuresama.ar.RESULT"
 
@@ -564,12 +734,42 @@ class ArMeasureActivity : AppCompatActivity(), GLSurfaceView.Renderer, MeasureSe
         private const val MAX_IMAGE_EDGE = 1600
         private const val JPEG_QUALITY = 85
 
-        private fun round5(value: Double): Double = Math.round(value * 100_000.0) / 100_000.0
-
         private fun isoUtcNow(): String {
             val format = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US)
             format.timeZone = TimeZone.getTimeZone("UTC")
             return format.format(Date())
         }
     }
+}
+
+/**
+ * The per-mode fields of an ArMeasurement (definitions.ts), in output order, rounded like the
+ * contract: 5 decimals, angleDeg 3. Pure (no org.json), so the field names are unit-tested.
+ * Values are Double or List<Double>. Only the fields the mode's ModeResult sets are included.
+ */
+object MeasurementFields {
+    fun of(result: ModeResult): List<Pair<String, Any>> {
+        val out = ArrayList<Pair<String, Any>>()
+        fun put(key: String, value: Double?) {
+            if (value != null) out.add(key to round5(value))
+        }
+        put("distanceM", result.distanceM)
+        result.segmentsM?.let { out.add("segmentsM" to it.map(::round5)) }
+        put("perimeterM", result.perimeterM)
+        put("areaM2", result.areaM2)
+        result.angleDeg?.let { out.add("angleDeg" to round3(it)) }
+        put("heightM", result.heightM)
+        put("lengthM", result.lengthM)
+        put("widthM", result.widthM)
+        put("volumeM3", result.volumeM3)
+        put("wallHeightM", result.wallHeightM)
+        return out
+    }
+
+    /** A point's x, y, z rounded to 5 decimals. */
+    fun point(p: Vec3): DoubleArray = doubleArrayOf(round5(p.x.toDouble()), round5(p.y.toDouble()), round5(p.z.toDouble()))
+
+    fun round5(value: Double): Double = Math.round(value * 100_000.0) / 100_000.0
+
+    fun round3(value: Double): Double = Math.round(value * 1_000.0) / 1_000.0
 }
