@@ -29,8 +29,8 @@ export default defineConfig({
         display: 'standalone',
         display_override: ['window-controls-overlay', 'standalone'],
         orientation: 'any',
-        background_color: '#F5F7FF',
-        theme_color: '#3730A3',
+        background_color: '#F4F4F1',
+        theme_color: '#F4F4F1',
         categories: ['utilities', 'productivity'],
         icons: [
           { src: 'pwa-64x64.png', sizes: '64x64', type: 'image/png' },

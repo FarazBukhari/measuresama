@@ -4,7 +4,7 @@ const config: CapacitorConfig = {
   appId: 'com.foxysama.measuresama',
   appName: 'Measure Sama',
   webDir: 'dist',
-  backgroundColor: '#3730A3',
+  backgroundColor: '#F4F4F1',
   // WebView debugging follows the build type: on for debug builds (used by the emulator
   // tests in CI), off for release builds.
   plugins: {

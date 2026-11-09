@@ -21,7 +21,7 @@ export function applyTheme(): void {
   const root = document.documentElement
   root.classList.toggle('dark', dark)
   root.style.colorScheme = dark ? 'dark' : 'light'
-  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', dark ? '#0b1020' : '#f5f7ff')
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', dark ? '#0F0F0F' : '#F4F4F1')
 }
 
 export function setTheme(pref: ThemePreference): void {
