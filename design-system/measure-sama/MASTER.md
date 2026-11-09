@@ -115,6 +115,18 @@ All in `src/components/ui` (plus layout pieces in `src/components/layout`).
   with a top `border` line, no blur. Active item: ink label, icon on a `muted` pill. Inactive:
   `muted-foreground`. Yellow never appears in navigation.
 
+## App icon, splash and browser colours
+
+- **Icon**: the `LogoMark` (`src/components/layout/Logo.tsx`): tape yellow with five ink ticks (long, short,
+  long, short, long) hanging from the top edge. App icons are full bleed (the OS rounds the corners); the
+  favicon and the splash use the tile with 25% rounded corners. Sources: `assets/icon.svg`, `public/favicon.svg`.
+- **Splash**: the tile at 28% of the screen on `background` (`#F4F4F1` light, `#0F0F0F` dark).
+- **theme-color**: follows the theme (`#F4F4F1` / `#0F0F0F`), set in `index.html` before first paint and by
+  `applyTheme()` in `src/state/preferences.ts`. Manifest `theme_color` and `background_color`: `#F4F4F1`.
+- Regenerate after changing the art: `node scripts/render-icons.mjs`, then
+  `npx capacitor-assets generate --android --ios` (revert its whitespace-only edit to `AndroidManifest.xml`),
+  then `npx pwa-assets-generator`.
+
 ## Screens
 
 Each screen answers one question with its biggest element.
