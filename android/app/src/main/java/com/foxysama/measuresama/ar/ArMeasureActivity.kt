@@ -454,9 +454,13 @@ class ArMeasureActivity : AppCompatActivity(), GLSurfaceView.Renderer, MeasureSe
         applyAddState()
     }
 
-    /** + looks off (but stays tappable) until the circle is on a surface. */
+    /**
+     * + is see-through grey with a faint + (but stays tappable) until the circle is on a surface,
+     * then tape yellow with an ink + (bg_ar_add.xml switches on the activated state).
+     */
     private fun applyAddState() {
-        addButton.alpha = if (onSurface) 1f else 0.4f
+        addButton.isActivated = onSurface
+        addButton.imageAlpha = if (onSurface) 255 else 102
         addButton.contentDescription =
             getString(
                 when {
