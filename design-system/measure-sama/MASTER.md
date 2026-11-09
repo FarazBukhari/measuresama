@@ -133,14 +133,15 @@ Each screen answers one question with its biggest element.
 
 | Screen | Question | Biggest thing | What it shows (and nothing more) |
 | --- | --- | --- | --- |
-| Home `/` | "What do I want to measure?" | The first available mode as a full-width yellow hero tile | Brand row as the `h1` (logo mark + "Measure Sama"). Hero tile: big pictogram + mode name + chevron. Other available modes as card tiles (2 columns; an odd last tile spans both). "Coming soon" as one small heading, then compact muted chips (small pictogram + name), not links. No descriptions. |
-| AR entry `/ar` | "How do I start?" | A big **Start measuring** button under an illustration of the gesture | Back + `h1` "Measure a distance". One picture of the gesture (phone, floor, two points, tape). If tips are on: three pictogram steps with 2–3 words each ("Scan the floor", "Tap one end", "Tap the other end"), a real `<ol>`. A small cm / in switch instead of the "Lengths show in…" sentence. Notices as a one-line Alert. |
-| AR fallback | "What now?" | The way forward (Install it, or the on-screen ruler) | Pictogram, one short heading, at most one muted line, buttons. Needs install: heading "One free app needed", line "Google Play Services for AR". Needs update: "Update one free app". Unknown: "Couldn’t check this phone" + reason or "Check your internet and try again." + Try again. Unsupported: "This phone can’t measure with the camera" and no extra line (the platform reason is technical). The ruler button is always there. |
+| Home `/` | "What do I want to measure?" | The first available mode as a full-width yellow hero tile | Brand row as the `h1` (logo mark + "Measure Sama"). Hero tile: big pictogram + mode name + chevron. Other available modes as card tiles (2 columns; an odd last tile spans both). Only if a mode is not built yet: "Coming soon" as one small heading, then compact muted chips (small pictogram + name), not links (today all nine are built, so none show). No descriptions. |
+| AR entry `/ar`, `/ar/:mode` | "How do I start?" | A big **Start measuring** button under an illustration | Back + `h1` from `src/modes/ar/modeCopy.ts` ("Measure a distance", "Measure height", …). Distance: one picture of the gesture (phone, floor, two points, tape) and three pictogram steps ("Scan the floor", "Tap one end", "Tap the other end"). Other modes: the mode's pictogram and its tips as numbered yellow circles. Steps only when tips are on, as a real `<ol>`. The mode's one-line intro is not shown. A small cm / in switch instead of the "Lengths show in…" sentence. Notices as a one-line Alert. |
+| AR fallback | "What now?" | The way forward (Install it, or the on-screen ruler) | Pictogram, one short heading, at most one muted line, buttons. Needs install: heading "One free app needed", line "Google Play Services for AR". Needs update: "Update one free app". Unknown: "Couldn’t check this phone" + reason or "Check your internet and try again." + Try again. Unsupported: "This phone can’t measure with the camera" and no extra line (the platform reason is technical). Camera works but this build can't do the mode (iOS today): "Coming soon on this phone". The ruler and "Use photo measure" buttons are always there. |
 | On-screen ruler `/ruler` | "How long is it?" | TapeReadout with A→B distance | Back + `h1` "On-screen ruler". Card-check prompt (if not checked): one compact card with a card pictogram, heading "Check the size with a bank card", button "Start card check", and an info button for the why. Then the readout (main unit, other unit + mm on the second line, chip "Estimate" or "Checked"), then the ruler, then "Full-screen ruler". Everything about pixels, screen size entry, model picker, "Start over" lives in one **Screen details** disclosure. Calibration warnings stay visible. |
 | Card check (overlay) | "Does the outline match my card?" | The card outline | Inside the outline: a card pictogram and "Put a card in this corner. Resize until it fits." Bottom bar: "Any bank or ID card" (muted), − slider +, Cancel / Save. |
 | Full-screen ruler (overlay) | "How long is it?" | The ruler + centred readout | Close button, "Estimate" chip when unchecked. |
-| History `/history` | "What did I measure?" | The figures in the list | `h1` "History". One List card: each row = photo or mode pictogram, figure at 20/700, then note (or mode name) · short date in 14px muted, chevron. Export: one compact row at the end ("Export all" label + CSV and JSON buttons). Empty: pictogram, "No measurements yet", "Measure something". |
-| Measurement `/history/:id` | "How long was it?" | TapeReadout with the saved length | Back + `h1` "Measurement". Photo (app only), readout (main + other unit), date and mode as one muted line, Note field (label "Note", placeholder "What did you measure?", no hint), Share and Delete. Delete asks once, inline: "Delete this measurement?" + Yes, delete / Cancel. |
+| Photo measure `/photo` | "How long is it in this photo?" | The photo with the card outline | Back + `h1` "Photo measure". Start: one card with the photo pictogram and "Card + object, flat on a table", then Take photo (primary) and Choose photo (tonal), full width. On the photo: a one-line prompt, white card outline on a dark edge (red dashed while it isn't a card), tape-yellow lines, each length on a yellow pill with ink figures; icon buttons; Save. The saved photo draws the same. |
+| History `/history` | "What did I measure?" | The figures in the list | `h1` "History". One List card: each row = photo or mode pictogram, the mode's main value (`resultSummary`) at 20/700, then note (or mode name) · short date in 14px muted, chevron. Export: one compact row at the end ("Export all" label + CSV and JSON buttons). Empty: pictogram, "No measurements yet", "Measure something". |
+| Measurement `/history/:id` | "What was it?" | TapeReadout with the saved main value | Back + `h1` "Measurement". Photo (app only); room plan drawing (ink walls on a pale yellow floor, yellow numbered badges, lengths outside the walls). Distance: readout with the main and other unit. Other modes: a small label ("Area", "Volume", …) over the readout, then the extras in one plain card (label left, figure right). Room plan: "Save PDF" (tonal). Date and mode as one muted line, Note field (label "Note", placeholder "What did you measure?", no hint), Share and Delete. Delete asks once, inline: "Delete this measurement?" + Yes, delete / Cancel. |
 | Settings `/settings` | "How do I change X?" | The controls | `h1` "Settings". Grouped Lists with small section labels: Units (cm / in), Look (theme with sun/moon/phone icons; Show tips switch), Ruler and history (Recalibrate row; Clear history row with count and an inline confirm), About (version; "Stays on your phone" with a lock icon). No helper sentences. |
 | Not found | "Where am I?" | The way home | Pictogram, `h1` "We can’t find that page", "Go home" button. |
 
@@ -160,46 +161,42 @@ overlays fade 150–200ms. No entrance animations. `prefers-reduced-motion` coll
 - Safe areas: `env(safe-area-inset-*)` on the page top, the bottom nav and overlays.
 - Text can grow to 200% without clipping: no fixed heights on text containers.
 
-## AR screen (native, for Android and iOS to follow)
+## AR screen (native, Android and iOS)
 
-The camera screen is native code (`ArMeasurePlugin.kt`, `ArMeasurePlugin.swift`). It should look like
-the rest of the app: the camera picture is the ground, ink and tape yellow are the only colours, and
-words are almost gone.
+Built in `android/.../ar/` (layout `activity_ar_measure.xml`, drawables `bg_ar_*`, `MeasureOverlayView`,
+`ScanAnimationView`) and `ios/App/App/ArMeasureViewController.swift` (NOT BUILT OR TESTED). The camera
+picture is the ground; tape yellow and ink are the only colours; words are almost gone.
 
-**Colours** (ARGB): tape `#FFFFC629`, ink `#FF141414`, white `#FFFFFFFF`, scrim `#99000000` (60%
-black) behind any text over the camera. No other hues; red only for a real error.
+**Colours**: tape `#FFC629`, ink `#141414`, white, scrim `#99000000` (60% black) behind any text over
+the camera, black at 55% as a shadow under every line and mark. No other hues; red only for a real error.
 
 **Layout** (portrait, safe areas respected):
 
 | Where | What |
 | --- | --- |
-| Top left | Close: 48dp round button, scrim fill, white X. Content description "Close". |
-| Top centre | Hint chip: one line, at most 4 words, 14sp/600 white on scrim, pill, 36dp tall. |
-| Centre | Reticle. |
-| Above the shutter | Live length on a **tape strip**: yellow pill, ink figure 28sp/800, tabular figures, tick marks along the top edge (same drawing as the web TapeReadout). Hidden until the first point is placed. |
-| Bottom centre | The **+ button**: 72dp circle. |
-| Bottom left / right | Undo (48dp, scrim, white undo arrow) · Done/Save (48dp, scrim, white check). Hidden until there is something to undo or save. |
+| Top left | Close: 48dp round scrim button, white X. |
+| Top centre | Hint chip: centred pill, 15sp/600 white on scrim, at most 4 words, live region (polite). |
+| Under it | Mode chip (scrim), the distance warning (ink on a yellow pill), Clear / Reset (scrim pill). |
+| Centre | Reticle. While no surface has been found yet: the scan animation (phone sweeping over a surface, yellow dots, on a scrim disc). |
+| Above the bottom bar | The live main number on a **tape pill**: yellow, ink 26sp/800 tabular figures, tick marks along the top edge. Lengths on sides are small yellow pills. |
+| Bottom | Undo (scrim pill) · the **+ button** (72dp circle, white ring) · Save (yellow pill, ink bold text). Undo, Clear and Save fade to 45% while they can't be used. |
 
-**Reticle states** (this is what Faraz could not read on the phone; every state must look different
-and move):
+**Marks**: lines are 3dp tape yellow on a 5dp white edge on a dark shadow (dashed for a shape's closing
+side); points are yellow dots with a white ring; shape fill is yellow at 25%; the angle arc is yellow.
 
-1. **Searching for a surface**: a white dashed ring (64dp, 2dp stroke) that slowly rotates, plus a small
-   phone pictogram that sweeps left-right under it (1.2s loop). Hint: "Move phone slowly". The + button is
-   **visibly disabled**: grey fill `#66FFFFFF`, ink + at 40%.
-2. **Surface found**: the ring snaps to a solid white circle lying flat on the surface (perspective), with
-   a 6dp yellow centre dot. A short scale pop (1.0 → 1.15 → 1.0, 200ms) and a light haptic tick the moment
-   it is found. The + button turns **tape yellow** with an ink +. Hint: "Tap + to start".
-3. **First point placed**: a yellow dot (10dp, white 2dp outline) stays on the surface; a 3dp yellow line
-   (white 1dp edge) runs from it to the reticle; the tape strip shows the live length. Hint: "Tap + to end".
-4. **Measured**: the line stays, the length label sits on the line's middle as a small tape pill. Hint
-   disappears. Done/Save appears.
-5. **Lost / too dark**: the ring returns to dashed and pulses; hint "More light, move slowly". + disabled.
+**Reticle and +**:
 
-**The + button must always answer a tap**: when disabled, a tap shakes the button (3 × 4dp, 250ms),
-gives a light haptic, and the hint briefly reads "Point at the floor". Never a silent no-op.
+1. **Searching**: a white dashed ring (48dp) that slowly turns. + is see-through grey (`#66FFFFFF`) with a
+   faint ink +.
+2. **On a surface**: a solid white ring (52dp) with a yellow centre dot. It pops (1.0 → 1.15 → 1.0, 200ms)
+   and the phone ticks when the surface is found. + turns tape yellow with an ink +.
+3. **Room plan snap**: a second white ring around it means "tap to close the room".
 
-**Motion**: 150–250ms, ease-out; the searching loops stop when the system "reduce motion" / "remove
-animations" setting is on (show the static dashed ring and the hint instead).
+**+ always answers a tap**: off a surface, a tap shakes it, gives a reject haptic, and the hint reads what
+to do ("Aim at a surface", "Aim at the floor", "Raise to the top") for 1.5s.
 
-**Accessibility**: every button has a content description; the hint chip is announced as a live region
-(polite); the length is announced when a point is placed.
+**Motion**: 150–250ms, ease-out. With system animations off (Android "Remove animations", iOS "Reduce
+motion"): the ring stays still, no pop, no shake, the scan animation shows one still frame.
+
+**WebView background**: Android `MainActivity` and iOS `MainViewController` follow the phone's light/dark
+setting (`#F4F4F1` / `#0F0F0F`), so the app never flashes the wrong ground before the page paints.
